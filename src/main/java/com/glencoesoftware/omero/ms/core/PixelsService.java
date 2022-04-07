@@ -30,11 +30,14 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
 import org.slf4j.LoggerFactory;
 
+import com.bc.zarr.ZarrGroup;
 import com.upplication.s3fs.S3FileSystemProvider;
 
 import ome.api.IQuery;
@@ -42,8 +45,8 @@ import ome.io.nio.BackOff;
 import ome.io.nio.FilePathResolver;
 import ome.io.nio.PixelBuffer;
 import ome.io.nio.TileSizes;
-import ome.model.core.Image;
 import ome.model.core.Pixels;
+import ome.parameters.Parameters;
 
 /**
  * Subclass which overrides series retrieval to avoid the need for
@@ -59,6 +62,9 @@ public class PixelsService extends ome.io.nio.PixelsService {
     /** Max Tile Length */
     private final int maxTileLength;
 
+    /** Copy of private IQuery also provided to ome.io.nio.PixelsService */
+    private final IQuery iQuery;
+
     public PixelsService(
             String path, boolean isReadOnlyRepo, File memoizerDirectory,
             long memoizerWait, FilePathResolver resolver, BackOff backOff,
@@ -68,6 +74,7 @@ public class PixelsService extends ome.io.nio.PixelsService {
             backOff, sizes, iQuery
         );
         this.maxTileLength = maxTileLength;
+        this.iQuery = iQuery;
     }
 
     /**
@@ -116,6 +123,60 @@ public class PixelsService extends ome.io.nio.PixelsService {
     }
 
     /**
+     * Retrieves the row, column, and field for a given set of pixels.
+     * @param pixels Set of pixels to return the row, column, and field for.
+     * @return The row, column, and field as specified by the pixels parameters
+     * or <code>null</code> if not in a plate.
+     */
+    protected int[] getRowColumnField(Pixels pixels)
+    {
+        final String query =
+            "SELECT w.row, w.column, index(ws) FROM Well AS w " +
+            "JOIN w.plate AS pl " +
+            "JOIN w.wellSamples AS ws " +
+            "JOIN ws.image AS i " +
+            "JOIN i.pixels as p " +
+            "WHERE p.id = :id";
+        final List<Object[]> results = iQuery.projection(
+                query, new Parameters().addId(pixels.getId()));
+        if (results.size() == 0) {
+            return null;
+        }
+        Object[] row = results.get(0);
+        return new int[] {
+            (Integer) row[0], (Integer) row[1], (Integer) row[2]
+        };
+    }
+
+    private String getImageSubPath(Path root, Pixels pixels)
+            throws IOException {
+        int[] rowColumnField = getRowColumnField(pixels);
+        if (rowColumnField != null) {
+            int rowIndex = rowColumnField[0];
+            int columnIndex = rowColumnField[1];
+            ZarrGroup z = ZarrGroup.open(root);
+            Map<String, Object> attributes = z.getAttributes();
+            Map<String, Object> plate =
+                    (Map<String, Object>) attributes.get("plate");
+            List<Map<String, Object>> wells =
+                    (List<Map<String, Object>>) plate.get("wells");
+            String prefix = null;
+            for (Map<String, Object> well : wells) {
+                if (((Integer) well.get("rowIndex")) == rowIndex
+                        && ((Integer) well.get("columnIndex")) == columnIndex) {
+                    prefix = (String) well.get("path");
+                }
+            }
+            if (prefix == null) {
+                throw new IOException(
+                        "Unable to locate path for Pixels:" + pixels.getId());
+            }
+            return String.format("%s/%d", prefix, rowColumnField[2]);
+        }
+        return String.format("%d", getSeries(pixels));
+    }
+
+    /**
      * Returns a pixel buffer for a given set of pixels. Either an NGFF pixel
      * buffer, a proprietary ROMIO pixel buffer or a specific pixel buffer
      * implementation.
@@ -127,7 +188,6 @@ public class PixelsService extends ome.io.nio.PixelsService {
      */
     @Override
     public PixelBuffer getPixelBuffer(Pixels pixels, boolean write) {
-        String series = Integer.toString(getSeries(pixels));
         try {
             Properties properties = new Properties();
             Path originalFilePath = Paths.get(
@@ -136,7 +196,8 @@ public class PixelsService extends ome.io.nio.PixelsService {
                     originalFilePath.getParent().resolve("ome_ngff.properties"),
                     StandardOpenOption.READ
             ));
-            Path root = asPath(properties.getProperty("uri")).resolve(series);
+            Path root = asPath(properties.getProperty("uri"));
+            root = root.resolve(getImageSubPath(root, pixels));
             log.info("OME-NGFF root is: " + root);
             try {
                 PixelBuffer v =
