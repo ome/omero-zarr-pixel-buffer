@@ -162,8 +162,10 @@ public class PixelsService extends ome.io.nio.PixelsService {
                     (List<Map<String, Object>>) plate.get("wells");
             String prefix = null;
             for (Map<String, Object> well : wells) {
-                if (rowIndex.equals(well.get("rowIndex"))
-                        && columnIndex.equals(well.get("columnIndex"))) {
+                if ((rowIndex.equals(well.get("rowIndex"))
+                     || rowIndex.equals(well.get("row_index")))
+                        && (columnIndex.equals(well.get("columnIndex"))
+                            || columnIndex.equals(well.get("column_index")))) {
                     prefix = (String) well.get("path");
                 }
             }
