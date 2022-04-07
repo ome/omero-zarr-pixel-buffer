@@ -127,8 +127,7 @@ public class PixelsService extends ome.io.nio.PixelsService {
      */
     @Override
     public PixelBuffer getPixelBuffer(Pixels pixels, boolean write) {
-        Image image = pixels.getImage();
-        String series = Integer.toString(image.getSeries());
+        String series = Integer.toString(getSeries(pixels));
         try {
             Properties properties = new Properties();
             Path originalFilePath = Paths.get(
@@ -151,7 +150,8 @@ public class PixelsService extends ome.io.nio.PixelsService {
             }
         } catch (IOException e1) {
             log.debug(
-                "Failed to find OME-NGFF metadata for Image:{}", image.getId());
+                "Failed to find OME-NGFF metadata for Pixels:{}",
+                pixels.getId());
         }
         return _getPixelBuffer(pixels, write);
     }
