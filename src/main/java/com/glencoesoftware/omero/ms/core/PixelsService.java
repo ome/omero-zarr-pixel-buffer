@@ -99,14 +99,13 @@ public class PixelsService extends ome.io.nio.PixelsService {
                 //   * https://github.com/lasersonlab/Amazon-S3-FileSystem-NIO
                 FileSystem fs = null;
                 try {
+                    fs = FileSystems.getFileSystem(endpoint);
+                } catch (FileSystemNotFoundException e) {
                     Map<String, String> env = new HashMap<String, String>();
                     env.put(
                             S3FileSystemProvider.AMAZON_S3_FACTORY_CLASS,
                             OmeroAmazonS3ClientFactory.class.getName());
                     fs = FileSystems.newFileSystem(endpoint, env);
-                } catch (FileSystemNotFoundException e) {
-                    log.error("File system not found", e);
-                    return null;
                 }
                 return fs.getPath(bucket, rest);
             }
