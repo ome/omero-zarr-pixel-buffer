@@ -29,9 +29,13 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Properties;
 
 import org.slf4j.LoggerFactory;
+
+import com.upplication.s3fs.S3FileSystemProvider;
 
 import ome.api.IQuery;
 import ome.io.nio.BackOff;
@@ -95,7 +99,11 @@ public class PixelsService extends ome.io.nio.PixelsService {
                 //   * https://github.com/lasersonlab/Amazon-S3-FileSystem-NIO
                 FileSystem fs = null;
                 try {
-                    fs = FileSystems.newFileSystem(endpoint, null);
+                    Map<String, String> env = new HashMap<String, String>();
+                    env.put(
+                            S3FileSystemProvider.AMAZON_S3_FACTORY_CLASS,
+                            OmeroAmazonS3ClientFactory.class.getName());
+                    fs = FileSystems.newFileSystem(endpoint, env);
                 } catch (FileSystemNotFoundException e) {
                     log.error("File system not found", e);
                     return null;
