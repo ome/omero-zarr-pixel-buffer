@@ -30,7 +30,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -62,17 +61,23 @@ public class PixelsService extends ome.io.nio.PixelsService {
     /** Max Tile Length */
     private final int maxTileLength;
 
+    /** Whether or not OME NGFF is enabled */
+    private final boolean isOmeNgffEnabled;
+
     /** Copy of private IQuery also provided to ome.io.nio.PixelsService */
     private final IQuery iQuery;
 
     public PixelsService(
             String path, boolean isReadOnlyRepo, File memoizerDirectory,
             long memoizerWait, FilePathResolver resolver, BackOff backOff,
-            TileSizes sizes, IQuery iQuery, int maxTileLength) {
+            TileSizes sizes, IQuery iQuery, boolean isOmeNgffEnabled,
+            int maxTileLength) {
         super(
             path, isReadOnlyRepo, memoizerDirectory, memoizerWait, resolver,
             backOff, sizes, iQuery
         );
+        this.isOmeNgffEnabled = isOmeNgffEnabled;
+        log.info("Is OME NGFF enabled? {}", isOmeNgffEnabled);
         this.maxTileLength = maxTileLength;
         this.iQuery = iQuery;
     }
@@ -179,17 +184,15 @@ public class PixelsService extends ome.io.nio.PixelsService {
     }
 
     /**
-     * Returns a pixel buffer for a given set of pixels. Either an NGFF pixel
-     * buffer, a proprietary ROMIO pixel buffer or a specific pixel buffer
-     * implementation.
+     * Returns an NGFF pixel buffer for a given set of pixels.
      * @param pixels Pixels set to retrieve a pixel buffer for.
      * @param write Whether or not to open the pixel buffer as read-write.
      * <code>true</code> opens as read-write, <code>false</code> opens as
      * read-only.
-     * @return A pixel buffer instance.
+     * @return An NGFF pixel buffer instance or <code>null</code> if one cannot
+     * be found.
      */
-    @Override
-    public PixelBuffer getPixelBuffer(Pixels pixels, boolean write) {
+    private PixelBuffer getOmeNgffPixelBuffer(Pixels pixels, boolean write) {
         try {
             Properties properties = new Properties();
             Path originalFilePath = Paths.get(
@@ -215,6 +218,27 @@ public class PixelsService extends ome.io.nio.PixelsService {
             log.debug(
                 "Failed to find OME-NGFF metadata for Pixels:{}",
                 pixels.getId());
+        }
+        return null;
+    }
+
+    /**
+     * Returns a pixel buffer for a given set of pixels. Either an NGFF pixel
+     * buffer, a proprietary ROMIO pixel buffer or a specific pixel buffer
+     * implementation.
+     * @param pixels Pixels set to retrieve a pixel buffer for.
+     * @param write Whether or not to open the pixel buffer as read-write.
+     * <code>true</code> opens as read-write, <code>false</code> opens as
+     * read-only.
+     * @return A pixel buffer instance.
+     */
+    @Override
+    public PixelBuffer getPixelBuffer(Pixels pixels, boolean write) {
+        if (isOmeNgffEnabled) {
+            PixelBuffer pixelBuffer = getOmeNgffPixelBuffer(pixels, write);
+            if (pixelBuffer != null) {
+                return pixelBuffer;
+            }
         }
         return _getPixelBuffer(pixels, write);
     }
