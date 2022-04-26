@@ -153,20 +153,32 @@ public class PixelsService extends ome.io.nio.PixelsService {
         };
     }
 
+    private Path getFilesetPath(Pixels pixels) throws IOException {
+        Properties properties = new Properties();
+        Path originalFilePath = Paths.get(
+                resolver.getOriginalFilePath(this, pixels));
+        properties.load(Files.newInputStream(
+                originalFilePath.getParent().resolve("ome_ngff.properties"),
+                StandardOpenOption.READ
+        ));
+        return asPath(properties.getProperty("uri"));
+    }
+
     private String getImageSubPath(Path root, Pixels pixels)
             throws IOException {
         int[] rowColumnField = getRowColumnField(pixels);
         if (rowColumnField != null) {
             Integer rowIndex = rowColumnField[0];
             Integer columnIndex = rowColumnField[1];
+            Integer field = rowColumnField[2];
             ZarrGroup z = ZarrGroup.open(root);
             Map<String, Object> attributes = z.getAttributes();
-            Map<String, Object> plate =
+            Map<String, Object> plateAttributes =
                     (Map<String, Object>) attributes.get("plate");
-            List<Map<String, Object>> wells =
-                    (List<Map<String, Object>>) plate.get("wells");
+            List<Map<String, Object>> wellAttributes =
+                    (List<Map<String, Object>>) plateAttributes.get("wells");
             String prefix = null;
-            for (Map<String, Object> well : wells) {
+            for (Map<String, Object> well : wellAttributes) {
                 if ((rowIndex.equals(well.get("rowIndex"))
                      || rowIndex.equals(well.get("row_index")))
                         && (columnIndex.equals(well.get("columnIndex"))
@@ -178,7 +190,7 @@ public class PixelsService extends ome.io.nio.PixelsService {
                 throw new IOException(
                         "Unable to locate path for Pixels:" + pixels.getId());
             }
-            return String.format("%s/%d", prefix, rowColumnField[2]);
+            return String.format("%s/%d", prefix, field);
         }
         return String.format("%d", getSeries(pixels));
     }
@@ -194,14 +206,7 @@ public class PixelsService extends ome.io.nio.PixelsService {
      */
     private PixelBuffer getOmeNgffPixelBuffer(Pixels pixels, boolean write) {
         try {
-            Properties properties = new Properties();
-            Path originalFilePath = Paths.get(
-                    resolver.getOriginalFilePath(this, pixels));
-            properties.load(Files.newInputStream(
-                    originalFilePath.getParent().resolve("ome_ngff.properties"),
-                    StandardOpenOption.READ
-            ));
-            Path root = asPath(properties.getProperty("uri"));
+            Path root = getFilesetPath(pixels);
             root = root.resolve(getImageSubPath(root, pixels));
             log.info("OME-NGFF root is: " + root);
             try {
