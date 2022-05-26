@@ -1,6 +1,7 @@
 plugins {
-    id 'application'
+    id 'java-library'
     id 'eclipse'
+    id 'maven-publish'
 }
 
 group = 'com.glencoesoftware.omero'
@@ -9,10 +10,7 @@ version = '0.1.0-SNAPSHOT'
 sourceCompatibility = 1.8
 targetCompatibility = 1.8
 
-mainClassName = 'ome.services.blitz.Entry'
-
 repositories {
-    jcenter()
     mavenCentral()
     maven {
         name 'Unidata'
@@ -43,12 +41,30 @@ repositories {
 }
 
 dependencies {
-    implementation 'org.openmicroscopy:omero-blitz:5.5.8'
+    api 'org.openmicroscopy:omero-blitz:5.5.8'
     implementation 'com.bc.zarr:jzarr:0.3.4'
     implementation 'org.lasersonlab:s3fs:2.2.3'
 }
 
 test {
   useJUnit()
+}
+
+publishing {
+    publications {
+        omeroZarrPixelBuffer(MavenPublication) {
+            from components.java
+        }
+    }
+
+    repositories {
+        maven {
+            url 'https://artifacts.glencoesoftware.com/artifactory/gs-omero-private-release-local/'
+            credentials {
+               username = project.properties.ArtifactoryUserName
+               password = project.properties.ArtifactoryPassword
+            }
+        }
+    }
 }
 
