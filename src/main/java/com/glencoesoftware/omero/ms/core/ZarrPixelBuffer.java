@@ -102,8 +102,6 @@ public class ZarrPixelBuffer implements PixelBuffer {
         }
         this.maxPlaneWidth = maxPlaneWidth;
         this.maxPlaneHeight = maxPlaneHeight;
-        log.info("Max Plane Width and Height: " +
-        Integer.toString(maxPlaneWidth) +  " " + Integer.toString(maxPlaneHeight));
     }
 
     /**
@@ -151,8 +149,6 @@ public class ZarrPixelBuffer implements PixelBuffer {
             throws IOException {
         Integer sizeX = shape[4];
         Integer sizeY = shape[3];
-        log.info("sizeX: " + Integer.toString(sizeX));
-        log.info("sizeY: " + Integer.toString(sizeY));
         if((sizeX * sizeY) > (maxPlaneWidth*maxPlaneHeight)) {
             throw new IllegalArgumentException(String.format(
                     "Requested Region Size %d * %d > max plane size %d * %d", sizeX,
