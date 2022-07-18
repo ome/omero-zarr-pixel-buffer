@@ -16,7 +16,8 @@
     <constructor-arg ref="tileSizes"/>
     <constructor-arg ref="internal-ome.api.IQuery"/>
     <constructor-arg type="boolean" value="${omero.pixeldata.ome_ngff_enabled:false}"/>
-    <constructor-arg type="int" value="${omero.pixeldata.max_tile_length:2048}"/>
+    <constructor-arg type="int" value="${omero.pixeldata.max_plane_height:3192}"/>
+    <constructor-arg type="int" value="${omero.pixeldata.max_plane_width:3192}"/>
     <property name="metrics" ref="metrics"/>
     <property name="memoizerDirectoryLocal" value="${omero.pixeldata.memoizer.dir.local}"/>
   </bean>

@@ -58,8 +58,11 @@ public class PixelsService extends ome.io.nio.PixelsService {
     private static final org.slf4j.Logger log =
             LoggerFactory.getLogger(PixelsService.class);
 
-    /** Max Tile Length */
-    private final int maxTileLength;
+    /** Max Plane Width */
+    private final Integer maxPlaneWidth;
+
+    /** Max Plane Height */
+    private final Integer maxPlaneHeight;
 
     /** Whether or not OME NGFF is enabled */
     private final boolean isOmeNgffEnabled;
@@ -71,14 +74,15 @@ public class PixelsService extends ome.io.nio.PixelsService {
             String path, boolean isReadOnlyRepo, File memoizerDirectory,
             long memoizerWait, FilePathResolver resolver, BackOff backOff,
             TileSizes sizes, IQuery iQuery, boolean isOmeNgffEnabled,
-            int maxTileLength) {
+            int maxPlaneWidth, int maxPlaneHeight) {
         super(
             path, isReadOnlyRepo, memoizerDirectory, memoizerWait, resolver,
             backOff, sizes, iQuery
         );
         this.isOmeNgffEnabled = isOmeNgffEnabled;
         log.info("Is OME NGFF enabled? {}", isOmeNgffEnabled);
-        this.maxTileLength = maxTileLength;
+        this.maxPlaneWidth = maxPlaneWidth;
+        this.maxPlaneHeight = maxPlaneHeight;
         this.iQuery = iQuery;
     }
 
@@ -211,7 +215,7 @@ public class PixelsService extends ome.io.nio.PixelsService {
             log.info("OME-NGFF root is: " + root);
             try {
                 PixelBuffer v =
-                        new ZarrPixelBuffer(pixels, root, maxTileLength);
+                        new ZarrPixelBuffer(pixels, root, maxPlaneWidth, maxPlaneHeight);
                 log.info("Using OME-NGFF pixel buffer");
                 return v;
             } catch (Exception e) {
