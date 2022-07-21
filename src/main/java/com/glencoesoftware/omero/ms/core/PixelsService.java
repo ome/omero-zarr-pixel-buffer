@@ -29,7 +29,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -58,6 +61,10 @@ public class PixelsService extends ome.io.nio.PixelsService {
     private static final org.slf4j.Logger log =
             LoggerFactory.getLogger(PixelsService.class);
 
+    private static final int PB_CACHE_SIZE = 12;
+
+    private final Map<Long, PixelBuffer> pbCache;
+
     /** Max Plane Width */
     private final Integer maxPlaneWidth;
 
@@ -84,6 +91,12 @@ public class PixelsService extends ome.io.nio.PixelsService {
         this.maxPlaneWidth = maxPlaneWidth;
         this.maxPlaneHeight = maxPlaneHeight;
         this.iQuery = iQuery;
+        Map pbCache = new LinkedHashMap(PB_CACHE_SIZE + 1) {
+            public boolean removeEldestEntry(Map.Entry eldest) {
+                return size() > PB_CACHE_SIZE;
+            }
+        };
+        this.pbCache = Collections.synchronizedMap(pbCache);
     }
 
     /**
@@ -214,8 +227,11 @@ public class PixelsService extends ome.io.nio.PixelsService {
             root = root.resolve(getImageSubPath(root, pixels));
             log.info("OME-NGFF root is: " + root);
             try {
+                long startTime = System.nanoTime();
                 PixelBuffer v =
                         new ZarrPixelBuffer(pixels, root, maxPlaneWidth, maxPlaneHeight);
+                long endTime = System.nanoTime();
+                log.info("ZPB creation time: " + Long.toString((endTime - startTime)/1000000));
                 log.info("Using OME-NGFF pixel buffer");
                 return v;
             } catch (Exception e) {
@@ -243,14 +259,20 @@ public class PixelsService extends ome.io.nio.PixelsService {
      */
     @Override
     public PixelBuffer getPixelBuffer(Pixels pixels, boolean write) {
-        if (isOmeNgffEnabled) {
-            PixelBuffer pixelBuffer = getOmeNgffPixelBuffer(pixels, write);
-            if (pixelBuffer != null) {
-                return pixelBuffer;
+        PixelBuffer pixelBuffer = pbCache.get(pixels.getId());
+        if (pixelBuffer == null) {
+            log.info("CUSTOM Failed to get PixelBuffer from cache");
+            if (isOmeNgffEnabled) {
+                pixelBuffer = getOmeNgffPixelBuffer(pixels, write);
             }
+            if (pixelBuffer == null) {
+                pixelBuffer = _getPixelBuffer(pixels, write);
+            }
+            pbCache.put(pixels.getId(), pixelBuffer);
+        } else {
+            log.info("CUSTOM get PixelBuffer from cache");
         }
-        return _getPixelBuffer(pixels, write);
+        return pixelBuffer;
     }
-
 }
 
