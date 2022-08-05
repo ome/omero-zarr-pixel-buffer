@@ -37,6 +37,8 @@ import java.util.Properties;
 import org.slf4j.LoggerFactory;
 
 import com.bc.zarr.ZarrGroup;
+import com.github.benmanes.caffeine.cache.Caffeine;
+import com.github.benmanes.caffeine.cache.LoadingCache;
 import com.upplication.s3fs.S3FileSystemProvider;
 
 import ome.api.IQuery;
@@ -67,13 +69,20 @@ public class PixelsService extends ome.io.nio.PixelsService {
     /** Whether or not OME NGFF is enabled */
     private final boolean isOmeNgffEnabled;
 
+    /** OME NGFF LRU cache size */
+    private final long omeNgffPixelBufferCacheSize;
+
     /** Copy of private IQuery also provided to ome.io.nio.PixelsService */
     private final IQuery iQuery;
+
+    /** LRU cache of pixels ID vs OME NGFF pixel buffers */
+    private LoadingCache<Long, ZarrPixelBuffer> omeNgffPixelBufferCache;
 
     public PixelsService(
             String path, boolean isReadOnlyRepo, File memoizerDirectory,
             long memoizerWait, FilePathResolver resolver, BackOff backOff,
             TileSizes sizes, IQuery iQuery, boolean isOmeNgffEnabled,
+            long omeNgffPixelBufferCacheSize,
             int maxPlaneWidth, int maxPlaneHeight) {
         super(
             path, isReadOnlyRepo, memoizerDirectory, memoizerWait, resolver,
@@ -81,9 +90,15 @@ public class PixelsService extends ome.io.nio.PixelsService {
         );
         this.isOmeNgffEnabled = isOmeNgffEnabled;
         log.info("Is OME NGFF enabled? {}", isOmeNgffEnabled);
+        this.omeNgffPixelBufferCacheSize = omeNgffPixelBufferCacheSize;
+        log.info("OME NGFF pixel buffer cache size: {}",
+                omeNgffPixelBufferCacheSize);
         this.maxPlaneWidth = maxPlaneWidth;
         this.maxPlaneHeight = maxPlaneHeight;
         this.iQuery = iQuery;
+        omeNgffPixelBufferCache = Caffeine.newBuilder()
+                .maximumSize(this.omeNgffPixelBufferCacheSize)
+                .build(key -> createOmeNgffPixelBuffer(key));
     }
 
     /**
@@ -133,11 +148,11 @@ public class PixelsService extends ome.io.nio.PixelsService {
 
     /**
      * Retrieves the row, column, and field for a given set of pixels.
-     * @param pixels Set of pixels to return the row, column, and field for.
+     * @param pixelsId Set of pixels to return the row, column, and field for.
      * @return The row, column, and field as specified by the pixels parameters
      * or <code>null</code> if not in a plate.
      */
-    protected int[] getRowColumnField(Pixels pixels)
+    protected int[] getRowColumnField(Long pixelsId)
     {
         final String query =
             "SELECT w.row, w.column, index(ws) FROM Well AS w " +
@@ -147,7 +162,7 @@ public class PixelsService extends ome.io.nio.PixelsService {
             "JOIN i.pixels as p " +
             "WHERE p.id = :id";
         final List<Object[]> results = iQuery.projection(
-                query, new Parameters().addId(pixels.getId()));
+                query, new Parameters().addId(pixelsId));
         if (results.size() == 0) {
             return null;
         }
@@ -170,7 +185,7 @@ public class PixelsService extends ome.io.nio.PixelsService {
 
     private String getImageSubPath(Path root, Pixels pixels)
             throws IOException {
-        int[] rowColumnField = getRowColumnField(pixels);
+        int[] rowColumnField = getRowColumnField(pixels.getId());
         if (rowColumnField != null) {
             Integer rowIndex = rowColumnField[0];
             Integer columnIndex = rowColumnField[1];
@@ -200,21 +215,21 @@ public class PixelsService extends ome.io.nio.PixelsService {
     }
 
     /**
-     * Returns an NGFF pixel buffer for a given set of pixels.
-     * @param pixels Pixels set to retrieve a pixel buffer for.
-     * @param write Whether or not to open the pixel buffer as read-write.
+     * Creates an NGFF pixel buffer for a given set of pixels.
+     * @param pixelsId Pixels set to retrieve a pixel buffer for.
      * <code>true</code> opens as read-write, <code>false</code> opens as
      * read-only.
      * @return An NGFF pixel buffer instance or <code>null</code> if one cannot
      * be found.
      */
-    private PixelBuffer getOmeNgffPixelBuffer(Pixels pixels, boolean write) {
+    private ZarrPixelBuffer createOmeNgffPixelBuffer(Long pixelsId) {
         try {
+            Pixels pixels = new Pixels(pixelsId, false);
             Path root = getFilesetPath(pixels);
             root = root.resolve(getImageSubPath(root, pixels));
             log.info("OME-NGFF root is: " + root);
             try {
-                PixelBuffer v =
+                ZarrPixelBuffer v =
                         new ZarrPixelBuffer(pixels, root, maxPlaneWidth, maxPlaneHeight);
                 log.info("Using OME-NGFF pixel buffer");
                 return v;
@@ -225,8 +240,7 @@ public class PixelsService extends ome.io.nio.PixelsService {
             }
         } catch (IOException e1) {
             log.debug(
-                "Failed to find OME-NGFF metadata for Pixels:{}",
-                pixels.getId());
+                "Failed to find OME-NGFF metadata for Pixels:{}", pixelsId);
         }
         return null;
     }
@@ -244,7 +258,8 @@ public class PixelsService extends ome.io.nio.PixelsService {
     @Override
     public PixelBuffer getPixelBuffer(Pixels pixels, boolean write) {
         if (isOmeNgffEnabled) {
-            PixelBuffer pixelBuffer = getOmeNgffPixelBuffer(pixels, write);
+            PixelBuffer pixelBuffer =
+                    omeNgffPixelBufferCache.get(pixels.getId());
             if (pixelBuffer != null) {
                 return pixelBuffer;
             }
