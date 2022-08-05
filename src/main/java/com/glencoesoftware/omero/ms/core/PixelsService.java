@@ -39,8 +39,8 @@ import org.perf4j.slf4j.Slf4JStopWatch;
 import org.slf4j.LoggerFactory;
 
 import com.bc.zarr.ZarrGroup;
+import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
-import com.github.benmanes.caffeine.cache.LoadingCache;
 import com.upplication.s3fs.S3FileSystemProvider;
 
 import ome.api.IQuery;
@@ -78,7 +78,7 @@ public class PixelsService extends ome.io.nio.PixelsService {
     private final IQuery iQuery;
 
     /** LRU cache of pixels ID vs OME NGFF pixel buffers */
-    private LoadingCache<Long, ZarrPixelBuffer> omeNgffPixelBufferCache;
+    private Cache<Long, ZarrPixelBuffer> omeNgffPixelBufferCache;
 
     public PixelsService(
             String path, boolean isReadOnlyRepo, File memoizerDirectory,
@@ -100,7 +100,7 @@ public class PixelsService extends ome.io.nio.PixelsService {
         this.iQuery = iQuery;
         omeNgffPixelBufferCache = Caffeine.newBuilder()
                 .maximumSize(this.omeNgffPixelBufferCacheSize)
-                .build(key -> createOmeNgffPixelBuffer(key));
+                .build();
     }
 
     /**
@@ -218,16 +218,15 @@ public class PixelsService extends ome.io.nio.PixelsService {
 
     /**
      * Creates an NGFF pixel buffer for a given set of pixels.
-     * @param pixelsId Pixels set to retrieve a pixel buffer for.
+     * @param pixels Pixels set to retrieve a pixel buffer for.
      * <code>true</code> opens as read-write, <code>false</code> opens as
      * read-only.
      * @return An NGFF pixel buffer instance or <code>null</code> if one cannot
      * be found.
      */
-    private ZarrPixelBuffer createOmeNgffPixelBuffer(Long pixelsId) {
+    private ZarrPixelBuffer createOmeNgffPixelBuffer(Pixels pixels) {
         StopWatch t0 = new Slf4JStopWatch("createOmeNgffPixelBuffer()");
         try {
-            Pixels pixels = new Pixels(pixelsId, false);
             Path root = getFilesetPath(pixels);
             root = root.resolve(getImageSubPath(root, pixels));
             log.info("OME-NGFF root is: " + root);
@@ -243,7 +242,8 @@ public class PixelsService extends ome.io.nio.PixelsService {
             }
         } catch (IOException e1) {
             log.debug(
-                "Failed to find OME-NGFF metadata for Pixels:{}", pixelsId);
+                "Failed to find OME-NGFF metadata for Pixels:{}",
+                pixels.getId());
         } finally {
             t0.stop();
         }
@@ -263,8 +263,8 @@ public class PixelsService extends ome.io.nio.PixelsService {
     @Override
     public PixelBuffer getPixelBuffer(Pixels pixels, boolean write) {
         if (isOmeNgffEnabled) {
-            PixelBuffer pixelBuffer =
-                    omeNgffPixelBufferCache.get(pixels.getId());
+            PixelBuffer pixelBuffer = omeNgffPixelBufferCache.get(
+                    pixels.getId(), key -> createOmeNgffPixelBuffer(pixels));
             if (pixelBuffer != null) {
                 return pixelBuffer;
             }
