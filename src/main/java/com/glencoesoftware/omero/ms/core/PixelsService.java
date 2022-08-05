@@ -34,6 +34,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
+import org.perf4j.StopWatch;
+import org.perf4j.slf4j.Slf4JStopWatch;
 import org.slf4j.LoggerFactory;
 
 import com.bc.zarr.ZarrGroup;
@@ -223,6 +225,7 @@ public class PixelsService extends ome.io.nio.PixelsService {
      * be found.
      */
     private ZarrPixelBuffer createOmeNgffPixelBuffer(Long pixelsId) {
+        StopWatch t0 = new Slf4JStopWatch("createOmeNgffPixelBuffer()");
         try {
             Pixels pixels = new Pixels(pixelsId, false);
             Path root = getFilesetPath(pixels);
@@ -241,6 +244,8 @@ public class PixelsService extends ome.io.nio.PixelsService {
         } catch (IOException e1) {
             log.debug(
                 "Failed to find OME-NGFF metadata for Pixels:{}", pixelsId);
+        } finally {
+            t0.stop();
         }
         return null;
     }
