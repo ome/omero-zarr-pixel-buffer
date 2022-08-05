@@ -41,7 +41,7 @@ repositories {
 }
 
 dependencies {
-    api 'org.openmicroscopy:omero-blitz:5.5.8'
+    api 'org.openmicroscopy:omero-blitz:5.5.12'
     implementation 'com.bc.zarr:jzarr:0.3.4'
     implementation 'org.lasersonlab:s3fs:2.2.3'
 }
