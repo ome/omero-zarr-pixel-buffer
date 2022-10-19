@@ -32,6 +32,7 @@ import java.nio.file.StandardOpenOption;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Properties;
 
 import org.perf4j.StopWatch;
@@ -41,6 +42,7 @@ import org.slf4j.LoggerFactory;
 import com.bc.zarr.ZarrGroup;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import com.google.common.base.Splitter;
 import com.upplication.s3fs.S3FileSystemProvider;
 
 import ome.api.IQuery;
@@ -118,6 +120,10 @@ public class PixelsService extends ome.io.nio.PixelsService {
 
         try {
             URI uri = new URI(ngffDir);
+            Map<String, String> params = Splitter.on('&')
+                    .trimResults()
+                    .withKeyValueSeparator('=')
+                    .split(uri.getQuery());
             if ("s3".equals(uri.getScheme())) {
                 URI endpoint = new URI(
                         uri.getScheme(), uri.getUserInfo(), uri.getHost(),
@@ -135,8 +141,15 @@ public class PixelsService extends ome.io.nio.PixelsService {
                     fs = FileSystems.getFileSystem(endpoint);
                 } catch (FileSystemNotFoundException e) {
                     Map<String, String> env = new HashMap<String, String>();
-                    env.put(
-                            S3FileSystemProvider.AMAZON_S3_FACTORY_CLASS,
+                    String profile = params.get("profile");
+                    if (profile != null) {
+                        env.put("s3fs_credential_profile_name", profile);
+                    }
+                    String anonymous =
+                            Optional.ofNullable(params.get("anonymous"))
+                                    .orElse("false");
+                    env.put("s3fs_anonymous", anonymous);
+                    env.put(S3FileSystemProvider.AMAZON_S3_FACTORY_CLASS,
                             OmeroAmazonS3ClientFactory.class.getName());
                     fs = FileSystems.newFileSystem(endpoint, env);
                 }
