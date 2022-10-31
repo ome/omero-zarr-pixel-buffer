@@ -78,6 +78,7 @@ public class ZarrPixelBuffer implements PixelBuffer {
 
     /**
      * Default constructor
+     * @param pixels Pixels metadata for the pixel buffer
      * @param root The root of this buffer
      * @param maxTileLength Maximum tile length that can be used during
      * read operations
