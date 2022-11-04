@@ -61,6 +61,9 @@ public class PixelsService extends ome.io.nio.PixelsService {
     private static final org.slf4j.Logger log =
             LoggerFactory.getLogger(PixelsService.class);
 
+    public static final String NGFF_ENTITY_TYPE = "com.glencoesoftware.ngff:multiscales";
+    public static final long NGFF_ENTITY_ID = 3;
+
     /** Max Plane Width */
     private final Integer maxPlaneWidth;
 
@@ -174,7 +177,21 @@ public class PixelsService extends ome.io.nio.PixelsService {
                     image.getClass().getName(), image.getId());
             return null;
         }
-        // TODO: add additional checks on entityType/entityId 
+
+        String entityType = externalInfo.getEntityType();
+        if (entityType == null && entityType != NGFF_ENTITY_TYPE) {
+            log.debug("{}:{} unsupported ExternalInfo entityType {}",
+                    image.getClass().getName(), image.getId(), entityType);
+            return null;
+        }
+
+        Long entityId = externalInfo.getEntityId();
+        if (entityId == null && entityId != NGFF_ENTITY_ID) {
+            log.debug("{}:{} unsupported ExternalInfo entityId {}",
+                    image.getClass().getName(), image.getId(), entityId);
+            return null;
+        }
+
         String uri = externalInfo.getLsid();
         if (uri == null) {
             log.debug("{}:{} missing LSID",
