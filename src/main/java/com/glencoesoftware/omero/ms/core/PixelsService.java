@@ -196,7 +196,8 @@ public class PixelsService extends ome.io.nio.PixelsService {
     private ZarrPixelBuffer createOmeNgffPixelBuffer(Pixels pixels) {
         StopWatch t0 = new Slf4JStopWatch("createOmeNgffPixelBuffer()");
         try {
-            String uri = getUri(pixels.getImage());
+            Image image = iQuery.get(Image.class, pixels.getImage().getId());
+            String uri = getUri(image);
             if (uri == null) {
                 log.debug("No OME-NGFF root");
                 return null;
