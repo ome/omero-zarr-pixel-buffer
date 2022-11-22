@@ -179,14 +179,14 @@ public class PixelsService extends ome.io.nio.PixelsService {
         }
 
         String entityType = externalInfo.getEntityType();
-        if (entityType == null && entityType != NGFF_ENTITY_TYPE) {
+        if (entityType != null && entityType != NGFF_ENTITY_TYPE) {
             log.debug("{}:{} unsupported ExternalInfo entityType {}",
                     image.getClass().getName(), image.getId(), entityType);
             return null;
         }
 
         Long entityId = externalInfo.getEntityId();
-        if (entityId == null && entityId != NGFF_ENTITY_ID) {
+        if (entityId != null && entityId != NGFF_ENTITY_ID) {
             log.debug("{}:{} unsupported ExternalInfo entityId {}",
                     image.getClass().getName(), image.getId(), entityId);
             return null;
