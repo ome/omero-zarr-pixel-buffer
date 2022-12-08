@@ -173,29 +173,35 @@ public class PixelsService extends ome.io.nio.PixelsService {
     private String getUri(Image image) {
         ExternalInfo externalInfo = image.getDetails().getExternalInfo();
         if (externalInfo == null) {
-            log.debug("{}:{} missing ExternalInfo",
-                    image.getClass().getName(), image.getId());
+            log.debug("Image:{} missing ExternalInfo", image.getId());
             return null;
         }
 
         String entityType = externalInfo.getEntityType();
-        if (entityType != null && entityType != NGFF_ENTITY_TYPE) {
-            log.debug("{}:{} unsupported ExternalInfo entityType {}",
-                    image.getClass().getName(), image.getId(), entityType);
+        if (entityType == null) {
+            log.debug("Image:{} missing ExternalInfo entityType", image.getId());
+            return null;
+        }
+        if (!entityType.equals(NGFF_ENTITY_TYPE)) {
+            log.debug("Image:{}  unsupported ExternalInfo entityType {}",
+                image.getId(), entityType);
             return null;
         }
 
         Long entityId = externalInfo.getEntityId();
-        if (entityId != null && entityId != NGFF_ENTITY_ID) {
-            log.debug("{}:{} unsupported ExternalInfo entityId {}",
-                    image.getClass().getName(), image.getId(), entityId);
+        if (entityType == null) {
+            log.debug("Image:{} missing ExternalInfo entityId", image.getId());
+            return null;
+        }
+        if (!entityId.equals(NGFF_ENTITY_ID)) {
+            log.debug("Image:{} unsupported ExternalInfo entityId {}",
+                image.getId(), entityId);
             return null;
         }
 
         String uri = externalInfo.getLsid();
         if (uri == null) {
-            log.debug("{}:{} missing LSID",
-                    image.getClass().getName(), image.getId());
+            log.debug("Image:{} missing LSID", image.getId());
             return null;
         }
         return uri;
