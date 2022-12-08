@@ -70,9 +70,6 @@ public class PixelsService extends ome.io.nio.PixelsService {
     /** Max Plane Height */
     private final Integer maxPlaneHeight;
 
-    /** Whether or not OME NGFF is enabled */
-    private final boolean isOmeNgffEnabled;
-
     /** OME NGFF LRU cache size */
     private final long omeNgffPixelBufferCacheSize;
 
@@ -85,15 +82,13 @@ public class PixelsService extends ome.io.nio.PixelsService {
     public PixelsService(
             String path, boolean isReadOnlyRepo, File memoizerDirectory,
             long memoizerWait, FilePathResolver resolver, BackOff backOff,
-            TileSizes sizes, IQuery iQuery, boolean isOmeNgffEnabled,
+            TileSizes sizes, IQuery iQuery,
             long omeNgffPixelBufferCacheSize,
             int maxPlaneWidth, int maxPlaneHeight) {
         super(
             path, isReadOnlyRepo, memoizerDirectory, memoizerWait, resolver,
             backOff, sizes, iQuery
         );
-        this.isOmeNgffEnabled = isOmeNgffEnabled;
-        log.info("Is OME NGFF enabled? {}", isOmeNgffEnabled);
         this.omeNgffPixelBufferCacheSize = omeNgffPixelBufferCacheSize;
         log.info("OME NGFF pixel buffer cache size: {}",
                 omeNgffPixelBufferCacheSize);
@@ -259,12 +254,10 @@ public class PixelsService extends ome.io.nio.PixelsService {
      */
     @Override
     public PixelBuffer getPixelBuffer(Pixels pixels, boolean write) {
-        if (isOmeNgffEnabled) {
-            PixelBuffer pixelBuffer = omeNgffPixelBufferCache.get(
-                    pixels.getId(), key -> createOmeNgffPixelBuffer(pixels));
-            if (pixelBuffer != null) {
-                return pixelBuffer;
-            }
+        PixelBuffer pixelBuffer = omeNgffPixelBufferCache.get(
+                pixels.getId(), key -> createOmeNgffPixelBuffer(pixels));
+        if (pixelBuffer != null) {
+            return pixelBuffer;
         }
         return _getPixelBuffer(pixels, write);
     }
