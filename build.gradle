@@ -35,8 +35,7 @@ repositories {
         url 'https://artifacts.glencoesoftware.com/artifactory/scijava-thirdparty'
     }
     maven {
-        name 'Brockmann-Consult Public Maven Repository'
-        url 'http://nexus.senbox.net/nexus/content/groups/public/'
+        url 'https://artifacts.glencoesoftware.com/artifactory/jzarr-releases/'
     }
 }
 
