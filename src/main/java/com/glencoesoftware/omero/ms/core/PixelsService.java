@@ -202,6 +202,14 @@ public class PixelsService extends ome.io.nio.PixelsService {
         return uri;
     }
 
+    /**
+     * Retrieve the {@link Image} for a particular set of pixels.
+     * @param pixels Pixels set to retrieve the {@link Image} for.
+     * @return See above.
+     */
+    protected Image getImage(Pixels pixels) {
+        return iQuery.get(Image.class, pixels.getImage().getId());
+    }
 
     /**
      * Creates an NGFF pixel buffer for a given set of pixels.
@@ -211,10 +219,10 @@ public class PixelsService extends ome.io.nio.PixelsService {
      * @return An NGFF pixel buffer instance or <code>null</code> if one cannot
      * be found.
      */
-    private ZarrPixelBuffer createOmeNgffPixelBuffer(Pixels pixels) {
+    protected ZarrPixelBuffer createOmeNgffPixelBuffer(Pixels pixels) {
         StopWatch t0 = new Slf4JStopWatch("createOmeNgffPixelBuffer()");
         try {
-            Image image = iQuery.get(Image.class, pixels.getImage().getId());
+            Image image = getImage(pixels);
             String uri = getUri(image);
             if (uri == null) {
                 log.debug("No OME-NGFF root");
