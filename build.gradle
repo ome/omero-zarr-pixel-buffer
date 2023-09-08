@@ -55,6 +55,15 @@ publishing {
     publications {
         omeroZarrPixelBuffer(MavenPublication) {
             from components.java
+            pom {
+                name = 'OMERO Zarr Pixel Buffer'
+                licenses {
+                    license {
+                        name = 'Glencoe Commercial License'
+                        url = 'https://www.glencoesoftware.com/products/omeroplus/licensing/'
+                    }
+                }
+            }
         }
     }
 
