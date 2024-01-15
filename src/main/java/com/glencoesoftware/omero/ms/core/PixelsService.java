@@ -229,7 +229,7 @@ public class PixelsService extends ome.io.nio.PixelsService {
                 return null;
             }
             Path root = asPath(uri);
-            log.info("OME-NGFF root is: " + root);
+            log.info("OME-NGFF root is: " + uri);
             try {
                 ZarrPixelBuffer v = new ZarrPixelBuffer(
                     pixels, root, maxPlaneWidth, maxPlaneHeight);

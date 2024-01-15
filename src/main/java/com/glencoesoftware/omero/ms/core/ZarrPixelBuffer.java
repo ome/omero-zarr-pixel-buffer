@@ -87,7 +87,7 @@ public class ZarrPixelBuffer implements PixelBuffer {
     public ZarrPixelBuffer(Pixels pixels, Path root, Integer maxPlaneWidth,
             Integer maxPlaneHeight)
             throws IOException {
-        log.info("Creating ZarrPixelBuffer with root " + root.toString());
+        log.info("Creating ZarrPixelBuffer");
         this.pixels = pixels;
         this.root = root;
         rootGroup = ZarrGroup.open(this.root);
