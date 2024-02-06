@@ -38,8 +38,6 @@ import org.slf4j.LoggerFactory;
 import com.google.common.base.Splitter;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
-import com.google.common.base.Splitter;
-import com.upplication.s3fs.S3FileSystemProvider;
 
 import ome.api.IQuery;
 import ome.conditions.LockTimeout;
@@ -109,7 +107,7 @@ public class PixelsService extends ome.io.nio.PixelsService {
      * directory has not been specified in configuration.
      * @throws IOException
      */
-    private Path asPath(String ngffDir) throws IOException {
+    private static Path asPath(String ngffDir) throws IOException {
         if (ngffDir.isEmpty()) {
             return null;
         }
@@ -117,15 +115,18 @@ public class PixelsService extends ome.io.nio.PixelsService {
         try {
             URI uri = new URI(ngffDir);
             if ("s3".equals(uri.getScheme())) {
+                if (uri.getUserInfo() != null && !uri.getUserInfo().isEmpty()) {
+                    throw new RuntimeException(
+                        "Found unsupported user information in S3 URI."
+                        + " If you are trying to pass S3 credentials, "
+                        + "use either named profiles or instance credentials.");
+                }
                 String query = Optional.ofNullable(uri.getQuery()).orElse("");
                 Map<String, String> params = Splitter.on('&')
                         .trimResults()
                         .omitEmptyStrings()
                         .withKeyValueSeparator('=')
                         .split(query);
-                URI endpoint = new URI(
-                        uri.getScheme(), uri.getUserInfo(), uri.getHost(),
-                        uri.getPort(), "", "", "");
                 // drop initial "/"
                 String uriPath = uri.getPath().substring(1);
                 int first = uriPath.indexOf("/");
@@ -134,23 +135,17 @@ public class PixelsService extends ome.io.nio.PixelsService {
                 // FIXME: We might want to support additional S3FS settings in
                 // the future.  See:
                 //   * https://github.com/lasersonlab/Amazon-S3-FileSystem-NIO2
-                FileSystem fs = null;
-                try {
-                    fs = FileSystems.getFileSystem(endpoint);
-                } catch (FileSystemNotFoundException e) {
-                    Map<String, String> env = new HashMap<String, String>();
-                    String profile = params.get("profile");
-                    if (profile != null) {
-                        env.put("s3fs_credential_profile_name", profile);
-                    }
-                    String anonymous =
-                            Optional.ofNullable(params.get("anonymous"))
-                                    .orElse("false");
-                    env.put("s3fs_anonymous", anonymous);
-                    env.put(S3FileSystemProvider.AMAZON_S3_FACTORY_CLASS,
-                            OmeroAmazonS3ClientFactory.class.getName());
-                    fs = FileSystems.newFileSystem(endpoint, env);
+                Map<String, String> env = new HashMap<String, String>();
+                String profile = params.get("profile");
+                if (profile != null) {
+                    env.put("s3fs_credential_profile_name", profile);
                 }
+                String anonymous =
+                        Optional.ofNullable(params.get("anonymous"))
+                                .orElse("false");
+                env.put("s3fs_anonymous", anonymous);
+                OmeroS3FilesystemProvider fsp = new OmeroS3FilesystemProvider();
+                FileSystem fs = fsp.getFileSystem(uri, env);
                 return fs.getPath(bucket, rest);
             }
         } catch (URISyntaxException e) {
