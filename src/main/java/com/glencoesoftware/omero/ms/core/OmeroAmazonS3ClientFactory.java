@@ -27,15 +27,12 @@ import com.amazonaws.auth.AWSStaticCredentialsProvider;
 import com.amazonaws.auth.AnonymousAWSCredentials;
 import com.amazonaws.auth.EC2ContainerCredentialsProviderWrapper;
 import com.amazonaws.auth.profile.ProfileCredentialsProvider;
-import com.amazonaws.services.s3.AmazonS3;
 import com.upplication.s3fs.AmazonS3ClientFactory;
 
 public class OmeroAmazonS3ClientFactory extends AmazonS3ClientFactory {
 
     private static final org.slf4j.Logger log =
             LoggerFactory.getLogger(OmeroAmazonS3ClientFactory.class);
-
-    private static AmazonS3 s3Client = null;
 
     @Override
     protected AWSCredentialsProvider getCredentialsProvider(Properties props) {
@@ -67,4 +64,5 @@ public class OmeroAmazonS3ClientFactory extends AmazonS3ClientFactory {
             );
         }
     }
+
 }
