@@ -144,7 +144,7 @@ public class PixelsService extends ome.io.nio.PixelsService {
                                 .orElse("false");
                 env.put("s3fs_anonymous", anonymous);
                 OmeroS3FilesystemProvider fsp = new OmeroS3FilesystemProvider();
-                FileSystem fs = fsp.getFileSystem(uri, env);
+                FileSystem fs = fsp.newFileSystem(uri, env);
                 return fs.getPath(bucket, rest);
             }
         } catch (URISyntaxException e) {
