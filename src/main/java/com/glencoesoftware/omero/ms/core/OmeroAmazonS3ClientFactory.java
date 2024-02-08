@@ -21,18 +21,24 @@ import java.util.Properties;
 
 import org.slf4j.LoggerFactory;
 
+import com.amazonaws.ClientConfiguration;
 import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.auth.AWSCredentialsProviderChain;
 import com.amazonaws.auth.AWSStaticCredentialsProvider;
 import com.amazonaws.auth.AnonymousAWSCredentials;
 import com.amazonaws.auth.EC2ContainerCredentialsProviderWrapper;
 import com.amazonaws.auth.profile.ProfileCredentialsProvider;
+import com.amazonaws.metrics.RequestMetricCollector;
+import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.upplication.s3fs.AmazonS3ClientFactory;
 
 public class OmeroAmazonS3ClientFactory extends AmazonS3ClientFactory {
 
     private static final org.slf4j.Logger log =
             LoggerFactory.getLogger(OmeroAmazonS3ClientFactory.class);
+
+    private static AmazonS3 s3Client = null;
 
     @Override
     protected AWSCredentialsProvider getCredentialsProvider(Properties props) {
@@ -65,4 +71,20 @@ public class OmeroAmazonS3ClientFactory extends AmazonS3ClientFactory {
         }
     }
 
+    /**
+     * The AmazonS3 client is threadsafe and utilizes an underlying ApacheHttpClient
+     * which maintains its own connection pool. The size of this pool can be
+     * modified by calling setMaxConnections on the ClientConfiguration
+     */
+    @Override
+    protected AmazonS3 createAmazonS3(AWSCredentialsProvider credentialsProvider, ClientConfiguration clientConfiguration, RequestMetricCollector requestMetricsCollector) {
+        if (s3Client == null) {
+            s3Client = AmazonS3ClientBuilder.standard()
+                        .withCredentials(credentialsProvider)
+                        .withClientConfiguration(clientConfiguration)
+                        .withMetricsCollector(requestMetricsCollector)
+                        .build();
+        }
+        return s3Client;
+    }
 }
