@@ -77,7 +77,7 @@ public class OmeroAmazonS3ClientFactory extends AmazonS3ClientFactory {
      * modified by calling setMaxConnections on the ClientConfiguration
      */
     @Override
-    protected AmazonS3 createAmazonS3(AWSCredentialsProvider credentialsProvider, ClientConfiguration clientConfiguration, RequestMetricCollector requestMetricsCollector) {
+    protected synchronized AmazonS3 createAmazonS3(AWSCredentialsProvider credentialsProvider, ClientConfiguration clientConfiguration, RequestMetricCollector requestMetricsCollector) {
         if (s3Client == null) {
             s3Client = AmazonS3ClientBuilder.standard()
                         .withCredentials(credentialsProvider)
