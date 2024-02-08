@@ -23,7 +23,6 @@ import com.upplication.s3fs.S3Path;
 
 public class OmeroS3ReadOnlySeekableByteChannel implements SeekableByteChannel {
 
-    private S3Path path;
     private Set<? extends OpenOption> options;
     private long length;
     byte[] data;
@@ -31,10 +30,7 @@ public class OmeroS3ReadOnlySeekableByteChannel implements SeekableByteChannel {
     private long position = 0;
 
     public OmeroS3ReadOnlySeekableByteChannel(S3Path path, Set<? extends OpenOption> options) throws IOException {
-        this.path = path;
         this.options = Collections.unmodifiableSet(new HashSet<>(options));
-
-        String key = path.getKey();
 
         if (
             this.options.contains(StandardOpenOption.WRITE) ||
