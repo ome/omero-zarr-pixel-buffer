@@ -23,8 +23,6 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.file.FileSystem;
-import java.nio.file.FileSystemNotFoundException;
-import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
@@ -36,6 +34,7 @@ import org.perf4j.slf4j.Slf4JStopWatch;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Splitter;
+import com.upplication.s3fs.OmeroS3FilesystemProvider;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 
@@ -64,10 +63,10 @@ public class PixelsService extends ome.io.nio.PixelsService {
     public static final long NGFF_ENTITY_ID = 3;
 
     /** Max Plane Width */
-    private final Integer maxPlaneWidth;
+    protected final Integer maxPlaneWidth;
 
     /** Max Plane Height */
-    private final Integer maxPlaneHeight;
+    protected final Integer maxPlaneHeight;
 
     /** OME NGFF LRU cache size */
     private final long omeNgffPixelBufferCacheSize;
