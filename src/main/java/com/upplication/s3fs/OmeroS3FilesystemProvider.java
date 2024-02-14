@@ -8,9 +8,11 @@ import java.net.URI;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.file.AccessMode;
 import java.nio.file.FileSystem;
+import java.nio.file.LinkOption;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileAttribute;
 import java.util.Map;
 import java.util.Properties;
@@ -20,6 +22,7 @@ import com.glencoesoftware.omero.ms.core.OmeroAmazonS3ClientFactory;
 import com.glencoesoftware.omero.ms.core.OmeroS3FileSystem;
 import com.glencoesoftware.omero.ms.core.OmeroS3ReadOnlySeekableByteChannel;
 import com.google.common.base.Preconditions;
+import com.upplication.s3fs.attribute.S3BasicFileAttributes;
 
 public class OmeroS3FilesystemProvider extends S3FileSystemProvider {
 
@@ -107,4 +110,10 @@ public class OmeroS3FilesystemProvider extends S3FileSystemProvider {
         return (S3Path) path;
     }
 
+    @Override
+    public <A extends BasicFileAttributes> A readAttributes(Path path, Class<A> type, LinkOption... options) throws IOException {
+        S3Path s3path = (S3Path) path;
+        BasicFileAttributes attrs = new S3BasicFileAttributes(s3path.getKey(), null, 0, true, false);
+        return type.cast(attrs);
+    }
 }
