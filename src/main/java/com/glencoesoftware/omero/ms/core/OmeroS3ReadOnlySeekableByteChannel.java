@@ -61,7 +61,7 @@ public class OmeroS3ReadOnlySeekableByteChannel implements SeekableByteChannel {
         // the stream closed as quickly as possible. See
         // https://docs.aws.amazon.com/AWSJavaSDK/latest/javadoc/com/amazonaws/services/s3/model/S3Object.html#getObjectContent--
         try (S3ObjectInputStream s3Stream = s3Object.getObjectContent()) {
-            byte[] read_buf = new byte[1024];
+            byte[] read_buf = new byte[1024*1024];
             int read_len = 0;
             while ((read_len = s3Stream.read(read_buf)) > 0) {
                 outputStream.write(read_buf, 0, read_len);
