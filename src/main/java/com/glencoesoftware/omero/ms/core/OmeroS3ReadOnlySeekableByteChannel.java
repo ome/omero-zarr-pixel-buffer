@@ -91,11 +91,7 @@ public class OmeroS3ReadOnlySeekableByteChannel implements SeekableByteChannel {
 
     @Override
     public SeekableByteChannel position(long newPosition) throws IOException {
-        ByteArrayInputStream inputStream = new ByteArrayInputStream(data);
-        rbc = Channels.newChannel(inputStream);
-        inputStream.skip(newPosition);
-        position = newPosition;
-        return this;
+        throw new UnsupportedOperationException();
     }
 
     @Override
