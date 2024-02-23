@@ -80,6 +80,11 @@ public class OmeroAmazonS3ClientFactory extends AmazonS3ClientFactory {
         return path.substring(0, path.indexOf("/"));
     }
 
+    private String getRegionFromUri(URI uri) {
+        String host = uri.getHost();
+        return host.split("\\.")[1];
+    }
+
     @Override
     public synchronized AmazonS3 getAmazonS3(URI uri, Properties props) {
         //Check if we have a S3 client for this bucket
@@ -94,6 +99,7 @@ public class OmeroAmazonS3ClientFactory extends AmazonS3ClientFactory {
                             .withCredentials(getCredentialsProvider(props))
                             .withClientConfiguration(getClientConfiguration(props))
                             .withMetricsCollector(getRequestMetricsCollector(props))
+                            .withRegion(getRegionFromUri(uri))
                             .build();
         bucketClientMap.put(bucket, client);
         return client;
