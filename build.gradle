@@ -32,7 +32,7 @@ repositories {
 
 dependencies {
     api 'org.openmicroscopy:omero-blitz:5.6.2'
-    implementation 'com.github.ben-manes.caffeine:caffeine:2.9.3'
+    implementation 'com.github.ben-manes.caffeine:caffeine:3.1.8'
     implementation 'com.bc.zarr:jzarr:0.3.5'
     implementation 'org.lasersonlab:s3fs:2.2.3'
     implementation 'com.amazonaws:aws-java-sdk-s3:1.12.659'
