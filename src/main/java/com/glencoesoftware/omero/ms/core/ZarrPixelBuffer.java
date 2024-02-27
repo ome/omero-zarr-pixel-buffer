@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.IntStream;
 
 import org.slf4j.LoggerFactory;
@@ -35,6 +36,8 @@ import org.slf4j.LoggerFactory;
 import com.bc.zarr.DataType;
 import com.bc.zarr.ZarrArray;
 import com.bc.zarr.ZarrGroup;
+import com.github.benmanes.caffeine.cache.AsyncLoadingCache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 
 import loci.formats.FormatTools;
 import ome.io.nio.DimensionsOutOfBoundsException;
@@ -76,6 +79,9 @@ public class ZarrPixelBuffer implements PixelBuffer {
     /** Zarr array corresponding to the current resolution level */
     private ZarrArray array;
 
+    /** { z, c, t, x, y, w, h } vs. tile byte array cache */
+    private final AsyncLoadingCache<List<Integer>, byte[]> tileCache;
+
     /**
      * Default constructor
      * @param pixels Pixels metadata for the pixel buffer
@@ -103,6 +109,22 @@ public class ZarrPixelBuffer implements PixelBuffer {
         }
         this.maxPlaneWidth = maxPlaneWidth;
         this.maxPlaneHeight = maxPlaneHeight;
+
+        tileCache = Caffeine.newBuilder()
+                .maximumSize(getSizeC())
+                .buildAsync(key -> {
+                    int z = key.get(0);
+                    int c = key.get(1);
+                    int t = key.get(2);
+                    int x = key.get(3);
+                    int y = key.get(4);
+                    int w = key.get(5);
+                    int h = key.get(6);
+                    int[] shape = new int[] { 1, 1, 1, h, w };
+                    byte[] innerBuffer =
+                            new byte[length(shape) * getByteWidth()];
+                    return getTileDirect(z, c, t, x, y, w, h, innerBuffer);
+                });
     }
 
     /**
@@ -415,9 +437,28 @@ public class ZarrPixelBuffer implements PixelBuffer {
         checkBounds(x, y, z, c, t);
         //Check check bottom-right of tile in bounds
         checkBounds(x + w - 1, y + h - 1, z, c, t);
-        int[] shape = new int[] { 1, 1, 1, h, w };
-        byte[] buffer = new byte[length(shape) * getByteWidth()];
-        return toPixelData(getTileDirect(z, c, t, x, y, w, h, buffer));
+
+        List<List<Integer>> keys = new ArrayList<List<Integer>>();
+        List<Integer> key = null;
+        List<Integer> channels = Arrays.asList(new Integer[] { c });
+        if (getSizeC() == 3) {
+            // Guessing that we are in RGB mode
+            channels = Arrays.asList(new Integer[] { 0, 1 ,2 });
+        }
+        for (Integer channel : channels) {
+            List<Integer> v = Arrays.asList(z, channel, t, x, y, w, h);
+            keys.add(v);
+            if (channel == c) {
+                key = v;
+            }
+        }
+        if (tileCache.getIfPresent(key) == null) {
+            tileCache.synchronous().invalidateAll();
+        }
+        CompletableFuture<Map<List<Integer>, byte[]>> future =
+                tileCache.getAll(keys);
+        Map<List<Integer>, byte[]> values = future.join();
+        return toPixelData(values.get(key));
     }
 
     @Override
