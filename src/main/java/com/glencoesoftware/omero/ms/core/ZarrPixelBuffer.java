@@ -82,6 +82,9 @@ public class ZarrPixelBuffer implements PixelBuffer {
     /** { z, c, t, x, y, w, h } vs. tile byte array cache */
     private final AsyncLoadingCache<List<Integer>, byte[]> tileCache;
 
+    /** Whether or not the Zarr is on S3 or similar */
+    private final boolean isRemote;
+
     /**
      * Default constructor
      * @param pixels Pixels metadata for the pixel buffer
@@ -96,6 +99,7 @@ public class ZarrPixelBuffer implements PixelBuffer {
         log.info("Creating ZarrPixelBuffer");
         this.pixels = pixels;
         this.root = root;
+        this.isRemote = root.toString().startsWith("s3://")? true : false;
         rootGroup = ZarrGroup.open(this.root);
         rootGroupAttributes = rootGroup.getAttributes();
         if (!rootGroupAttributes.containsKey("multiscales")) {
@@ -441,7 +445,7 @@ public class ZarrPixelBuffer implements PixelBuffer {
         List<List<Integer>> keys = new ArrayList<List<Integer>>();
         List<Integer> key = null;
         List<Integer> channels = Arrays.asList(new Integer[] { c });
-        if (getSizeC() == 3) {
+        if (getSizeC() == 3 && isRemote) {
             // Guessing that we are in RGB mode
             channels = Arrays.asList(new Integer[] { 0, 1 ,2 });
         }
@@ -453,6 +457,9 @@ public class ZarrPixelBuffer implements PixelBuffer {
             }
         }
         if (tileCache.getIfPresent(key) == null) {
+            // We want to completely invalidate the cache if our key is not
+            // present as relying on Caffeine to expire the previous triplicate
+            // of channels can be unpredictable.
             tileCache.synchronous().invalidateAll();
         }
         CompletableFuture<Map<List<Integer>, byte[]>> future =
