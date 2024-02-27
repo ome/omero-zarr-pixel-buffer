@@ -26,6 +26,12 @@ import com.upplication.s3fs.attribute.S3BasicFileAttributes;
 
 public class OmeroS3FilesystemProvider extends S3FileSystemProvider {
 
+    /**
+     * Overridden, hybrid version of the implementation from
+     * {@link S3FileSystemProvider#newFileSystem(URI, Map)}.  Our implementation
+     * ensures that a new filesystem is created every time and not registered
+     * with the JVM wide <code>fileSystems</code> map. 
+     */
     @Override
     public FileSystem newFileSystem(URI uri, Map<String, ?> env) {
         validateUri(uri);
@@ -37,6 +43,10 @@ public class OmeroS3FilesystemProvider extends S3FileSystemProvider {
         return fileSystem;
     }
 
+    /**
+     * An exact copy of the implementation from {@link S3FileSystemProvider}
+     * due to its private visibility.
+     */
     private void validateProperties(Properties props) {
         Preconditions.checkArgument(
                 (props.getProperty(ACCESS_KEY) == null && props.getProperty(SECRET_KEY) == null)
@@ -44,6 +54,10 @@ public class OmeroS3FilesystemProvider extends S3FileSystemProvider {
                 ACCESS_KEY, SECRET_KEY);
     }
 
+    /**
+     * An exact copy of the implementation from {@link S3FileSystemProvider}
+     * due to its private visibility.
+     */
     private Properties getProperties(URI uri, Map<String, ?> env) {
         Properties props = loadAmazonProperties();
         addEnvProperties(props, env);
@@ -59,21 +73,32 @@ public class OmeroS3FilesystemProvider extends S3FileSystemProvider {
         return props;
     }
 
+
     /**
-     * Create the fileSystem
-     *
-     * @param uri   URI
-     * @param props Properties
-     * @return S3FileSystem never null
+     * Overridden, hybrid version of the implementation from
+     * {@link S3FileSystemProvider#createFileSystem(URI, Properties)}.  Our
+     * implementation uses our own {@link OmeroS3FileSystem}.
      */
+    @Override
     public S3FileSystem createFileSystem(URI uri, Properties props) {
         return new OmeroS3FileSystem(this, getFileSystemKey(uri, props), getAmazonS3(uri, props), uri.getHost());
     }
 
+    /**
+     * Overridden, hybrid version of the implementation from
+     * {@link S3FileSystemProvider#getAmazonS3Factory(Properties)}.  Our
+     * implementation uses our own {@link OmeroAmazonS3ClientFactory}.
+     */
+    @Override
     protected AmazonS3Factory getAmazonS3Factory(Properties props) {
         return new OmeroAmazonS3ClientFactory();
     }
 
+    /**
+     * Overridden, hybrid version of the implementation from
+     * {@link S3FileSystemProvider#checkAccess(Path, AccessMode...)}.  Our
+     * implementation is a no-op, effectively disabling access checks.
+     */
     @Override
     public void checkAccess(Path path, AccessMode... modes) throws IOException {
         // No-op
@@ -81,16 +106,21 @@ public class OmeroS3FilesystemProvider extends S3FileSystemProvider {
     }
 
     /**
-     * check that the paths exists or not
-     *
-     * @param path S3Path
-     * @return true if exists
+     * Overridden, hybrid version of the implementation from
+     * {@link S3FileSystemProvider#exists(S3Path)}.  Our
+     * implementation is a no-op, effectively disabling existence checks.
      */
     @Override
     public boolean exists(S3Path path) {
         return true;
     }
 
+    /**
+     * Overridden, hybrid version of the implementation from
+     * {@link S3FileSystemProvider#newByteChannel(Path, Set, FileAttribute...)}.
+     * Our implementation uses our own
+     * {@link OmeroS3ReadOnlySeekableByteChannel}.
+     */
     @Override
     public SeekableByteChannel newByteChannel(Path path, Set<? extends OpenOption> options, FileAttribute<?>... attrs) throws IOException {
         S3Path s3Path = toS3Path(path);
@@ -105,11 +135,21 @@ public class OmeroS3FilesystemProvider extends S3FileSystemProvider {
         }
     }
 
+    /**
+     * An exact copy of the implementation from {@link S3FileSystemProvider}
+     * due to its private visibility.
+     */
     private S3Path toS3Path(Path path) {
         Preconditions.checkArgument(path instanceof S3Path, "path must be an instance of %s", S3Path.class.getName());
         return (S3Path) path;
     }
 
+    /**
+     * Overridden, hybrid version of the implementation from
+     * {@link S3FileSystemProvider#readAttributes(Path, Class, LinkOption...)}.
+     * Our implementation is a no-op, effectively using the same set of
+     * read-only attributes for every file.
+     */
     @Override
     public <A extends BasicFileAttributes> A readAttributes(Path path, Class<A> type, LinkOption... options) throws IOException {
         S3Path s3path = (S3Path) path;
