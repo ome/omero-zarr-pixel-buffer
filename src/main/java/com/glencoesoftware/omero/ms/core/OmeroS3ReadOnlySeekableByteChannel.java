@@ -22,15 +22,28 @@ import com.amazonaws.services.s3.model.GetObjectRequest;
 import com.amazonaws.services.s3.model.S3Object;
 import com.amazonaws.services.s3.model.S3ObjectInputStream;
 import com.upplication.s3fs.S3Path;
+import com.upplication.s3fs.S3ReadOnlySeekableByteChannel;
 
+/**
+ * Overridden, hybrid version of the implementation from
+ * {@link S3ReadOnlySeekableByteChannel}.  Due to its private visibility on
+ * nearly all the important instance variables much of the implementation is
+ * copied verbatim.
+ */
 public class OmeroS3ReadOnlySeekableByteChannel implements SeekableByteChannel {
 
     private Set<? extends OpenOption> options;
-    private long length;
+    private final long length;
     byte[] data;
-    private ReadableByteChannel rbc;
+    private final ReadableByteChannel rbc;
     private long position = 0;
 
+    /**
+     * Overridden, hybrid version of the implementation from
+     * {@link S3ReadOnlySeekableByteChannel}.  Our implementation loads the
+     * entire object in full from S3 without checks for length during
+     * object construction.
+     */
     public OmeroS3ReadOnlySeekableByteChannel(S3Path path, Set<? extends OpenOption> options) throws IOException {
         this.options = Collections.unmodifiableSet(new HashSet<>(options));
 
@@ -41,10 +54,6 @@ public class OmeroS3ReadOnlySeekableByteChannel implements SeekableByteChannel {
             this.options.contains(StandardOpenOption.APPEND)
         ) {
             throw new ReadOnlyFileSystemException();
-        }
-
-        if (rbc != null) {
-            rbc.close();
         }
 
         String bucketName = path.getFileStore().name();
@@ -82,26 +91,41 @@ public class OmeroS3ReadOnlySeekableByteChannel implements SeekableByteChannel {
         this.position = 0;
     }
 
-    @Override
-    public void close() throws IOException {
-        rbc.close();
-    }
-
+    /**
+     * An exact copy of the implementation from
+     * {@link S3ReadOnlySeekableByteChannel} due to its instance variable
+     * private visibility.
+     */
     @Override
     public boolean isOpen() {
         return rbc.isOpen();
     }
 
+    /**
+     * An exact copy of the implementation from
+     * {@link S3ReadOnlySeekableByteChannel} due to its instance variable
+     * private visibility.
+     */
     @Override
-    public long position() throws IOException {
-        return position;
-    }
+    public long position() { return position; }
 
+    /**
+     * Overridden, hybrid version of the implementation from
+     * {@link S3ReadOnlySeekableByteChannel}.  Our implementation does not
+     * support repositioning within the channel.
+     */
     @Override
-    public SeekableByteChannel position(long newPosition) throws IOException {
+    public SeekableByteChannel position(long targetPosition)
+            throws IOException
+    {
         throw new UnsupportedOperationException();
     }
 
+    /**
+     * An exact copy of the implementation from
+     * {@link S3ReadOnlySeekableByteChannel} due to its instance variable
+     * private visibility.
+     */
     @Override
     public int read(ByteBuffer dst) throws IOException {
         int n = rbc.read(dst);
@@ -111,19 +135,43 @@ public class OmeroS3ReadOnlySeekableByteChannel implements SeekableByteChannel {
         return n;
     }
 
-    @Override
-    public long size() throws IOException {
-        return this.length;
-    }
-
+    /**
+     * An exact copy of the implementation from
+     * {@link S3ReadOnlySeekableByteChannel} due to its instance variable
+     * private visibility.
+     */
     @Override
     public SeekableByteChannel truncate(long size) throws IOException {
         throw new NonWritableChannelException();
     }
 
+    /**
+     * An exact copy of the implementation from
+     * {@link S3ReadOnlySeekableByteChannel} due to its instance variable
+     * private visibility.
+     */
     @Override
     public int write(ByteBuffer src) throws IOException {
         throw new NonWritableChannelException();
     }
 
+    /**
+     * An exact copy of the implementation from
+     * {@link S3ReadOnlySeekableByteChannel} due to its instance variable
+     * private visibility.
+     */
+    @Override
+    public long size() throws IOException {
+        return length;
+    }
+
+    /**
+     * An exact copy of the implementation from
+     * {@link S3ReadOnlySeekableByteChannel} due to its instance variable
+     * private visibility.
+     */
+    @Override
+    public void close() throws IOException {
+        rbc.close();
+    }
 }
