@@ -16,6 +16,8 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
+import org.perf4j.slf4j.Slf4JStopWatch;
+
 import com.amazonaws.services.s3.model.GetObjectRequest;
 import com.amazonaws.services.s3.model.S3Object;
 import com.amazonaws.services.s3.model.S3ObjectInputStream;
@@ -45,29 +47,35 @@ public class OmeroS3ReadOnlySeekableByteChannel implements SeekableByteChannel {
             rbc.close();
         }
 
+        String bucketName = path.getFileStore().name();
+        String key = path.getKey();
         GetObjectRequest getObjectRequest =
-            new GetObjectRequest(
-                path.getFileStore().name(),
-                path.getKey()
-            );
+            new GetObjectRequest(bucketName, key);
 
-        S3Object s3Object =
-            path
-                .getFileSystem()
-                .getClient()
-                .getObject(getObjectRequest);
-        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        // The return value of getObjectContent should be copied and
-        // the stream closed as quickly as possible. See
-        // https://docs.aws.amazon.com/AWSJavaSDK/latest/javadoc/com/amazonaws/services/s3/model/S3Object.html#getObjectContent--
-        try (S3ObjectInputStream s3Stream = s3Object.getObjectContent()) {
-            byte[] read_buf = new byte[1024*1024];
-            int read_len = 0;
-            while ((read_len = s3Stream.read(read_buf)) > 0) {
-                outputStream.write(read_buf, 0, read_len);
+        Slf4JStopWatch t0 = new Slf4JStopWatch(
+                "OmeroS3ReadOnlySeekableByteChannel.getObject",
+                "s3://" + bucketName + "/" + key);
+        try {
+            S3Object s3Object =
+                path
+                    .getFileSystem()
+                    .getClient()
+                    .getObject(getObjectRequest);
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+            // The return value of getObjectContent should be copied and
+            // the stream closed as quickly as possible. See
+            // https://docs.aws.amazon.com/AWSJavaSDK/latest/javadoc/com/amazonaws/services/s3/model/S3Object.html#getObjectContent--
+            try (S3ObjectInputStream s3Stream = s3Object.getObjectContent()) {
+                byte[] read_buf = new byte[1024*1024];
+                int read_len = 0;
+                while ((read_len = s3Stream.read(read_buf)) > 0) {
+                    outputStream.write(read_buf, 0, read_len);
+                }
             }
+            this.data = outputStream.toByteArray();
+        } finally {
+            t0.stop();
         }
-        this.data = outputStream.toByteArray();
         this.length = this.data.length;
         ByteArrayInputStream inputStream = new ByteArrayInputStream(data);
         rbc = Channels.newChannel(inputStream);
