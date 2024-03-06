@@ -23,15 +23,6 @@ repositories {
         url 'https://artifacts.glencoesoftware.com/artifactory/ome.external'
     }
     maven {
-        url 'https://artifacts.glencoesoftware.com/artifactory/gs-omero-snapshots-local'
-    }
-    maven {
-        url 'https://repo.glencoesoftware.com/repository/bioformats2raw2ometiff/'
-    }
-    maven {
-        url 'https://repo.glencoesoftware.com/repository/jzarr-snapshots'
-    }
-    maven {
         url 'https://artifacts.glencoesoftware.com/artifactory/scijava-thirdparty'
     }
     maven {
