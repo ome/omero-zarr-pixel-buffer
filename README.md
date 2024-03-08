@@ -42,3 +42,7 @@ Run the Gradle build including the tests
 
     ./gradlew build
 
+## License
+
+The converter is distributed under the terms of the GPL license. Please see [LICENSE.txt](LICENSE.txt)
+for further details.
