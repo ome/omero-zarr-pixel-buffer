@@ -42,6 +42,7 @@ import com.google.common.base.Splitter;
 import com.upplication.s3fs.S3FileSystemProvider;
 
 import ome.api.IQuery;
+import ome.conditions.LockTimeout;
 import ome.io.nio.BackOff;
 import ome.io.nio.FilePathResolver;
 import ome.io.nio.PixelBuffer;
@@ -225,6 +226,10 @@ public class PixelsService extends ome.io.nio.PixelsService {
             Image image = getImage(pixels);
             String uri = getUri(image);
             if (uri == null) {
+                // Quick exit if we think we're OME-NGFF but there is no URI
+                if ("OMEXML".equals(image.getFormat().getValue())) {
+                    throw new LockTimeout("Import in progress.", 15*1000, 0);
+                }
                 log.debug("No OME-NGFF root");
                 return null;
             }
