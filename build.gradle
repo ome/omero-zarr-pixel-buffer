@@ -50,8 +50,8 @@ publishing {
                 name = 'OMERO Zarr Pixel Buffer'
                 licenses {
                     license {
-                        name = 'Glencoe Commercial License'
-                        url = 'https://www.glencoesoftware.com/products/omeroplus/licensing/'
+                        name = 'GNU General Public License version 2'
+                        url = 'http://www.gnu.org/licenses/gpl-2.0.txt'
                     }
                 }
             }
