@@ -60,7 +60,7 @@ publishing {
 
     repositories {
         maven {
-            url 'https://artifacts.glencoesoftware.com/artifactory/gs-omero-private-release-local/'
+            url 'https://artifacts.glencoesoftware.com/artifactory/gs-omero-snapshots-local/'
             credentials {
                username = project.properties.ArtifactoryUserName
                password = project.properties.ArtifactoryPassword
