@@ -51,6 +51,7 @@ import ome.model.IObject;
 import ome.model.core.Image;
 import ome.model.core.Pixels;
 import ome.model.meta.ExternalInfo;
+import ome.model.roi.Mask;
 
 /**
  * Subclass which overrides series retrieval to avoid the need for
@@ -221,6 +222,29 @@ public class PixelsService extends ome.io.nio.PixelsService {
      */
     protected Image getImage(Pixels pixels) {
         return iQuery.get(Image.class, pixels.getImage().getId());
+    }
+
+    /**
+     * Returns a label image NGFF pixel buffer if it exists.
+     * @param mask Mask to retrieve a pixel buffer for.
+     * @return A pixel buffer instance.
+     * @throws IOException
+     */
+    public ZarrPixelBuffer getLabelImagePixelBuffer(Mask mask)
+            throws IOException {
+        Pixels pixels = new ome.model.core.Pixels();
+        pixels.setSizeX(mask.getWidth().intValue());
+        pixels.setSizeY(mask.getHeight().intValue());
+        pixels.setSizeC(1);
+        pixels.setSizeT(1);
+        pixels.setSizeZ(1);
+        String root = getUri(mask);
+        if (root == null) {
+            throw new IllegalArgumentException(
+                    "No root for Mask:" + mask.getId());
+        }
+        return new ZarrPixelBuffer(
+                pixels, asPath(root), maxPlaneWidth, maxPlaneHeight);
     }
 
     /**
