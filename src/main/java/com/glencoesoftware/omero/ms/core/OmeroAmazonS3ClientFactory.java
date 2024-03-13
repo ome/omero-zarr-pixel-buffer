@@ -17,6 +17,9 @@
  */
 package com.glencoesoftware.omero.ms.core;
 
+import java.net.URI;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Properties;
 
 import org.slf4j.LoggerFactory;
@@ -27,12 +30,16 @@ import com.amazonaws.auth.AWSStaticCredentialsProvider;
 import com.amazonaws.auth.AnonymousAWSCredentials;
 import com.amazonaws.auth.EC2ContainerCredentialsProviderWrapper;
 import com.amazonaws.auth.profile.ProfileCredentialsProvider;
+import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.upplication.s3fs.AmazonS3ClientFactory;
 
 public class OmeroAmazonS3ClientFactory extends AmazonS3ClientFactory {
 
     private static final org.slf4j.Logger log =
             LoggerFactory.getLogger(OmeroAmazonS3ClientFactory.class);
+
+    private static final Map<String, AmazonS3> bucketClientMap = new HashMap<>();
 
     @Override
     protected AWSCredentialsProvider getCredentialsProvider(Properties props) {
@@ -63,6 +70,39 @@ public class OmeroAmazonS3ClientFactory extends AmazonS3ClientFactory {
                     new EC2ContainerCredentialsProviderWrapper()
             );
         }
+    }
+
+    private String getBucketFromUri(URI uri) {
+        String path = uri.getPath();
+        if (path.startsWith("/")) {
+            path = path.substring(1);
+        }
+        return path.substring(0, path.indexOf("/"));
+    }
+
+    private String getRegionFromUri(URI uri) {
+        String host = uri.getHost();
+        return host.split("\\.")[1];
+    }
+
+    @Override
+    public synchronized AmazonS3 getAmazonS3(URI uri, Properties props) {
+        //Check if we have a S3 client for this bucket
+        String bucket = getBucketFromUri(uri);
+        log.info(bucket);
+        if (bucketClientMap.containsKey(bucket)) {
+            log.info("Found bucket " + bucket);
+            return bucketClientMap.get(bucket);
+        }
+        log.info("Creating client for bucket " + bucket);
+        AmazonS3 client = AmazonS3ClientBuilder.standard()
+                            .withCredentials(getCredentialsProvider(props))
+                            .withClientConfiguration(getClientConfiguration(props))
+                            .withMetricsCollector(getRequestMetricsCollector(props))
+                            .withRegion(getRegionFromUri(uri))
+                            .build();
+        bucketClientMap.put(bucket, client);
+        return client;
     }
 
 }
