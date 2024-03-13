@@ -215,6 +215,9 @@ public class PixelsService extends ome.io.nio.PixelsService {
      * @return See above.
      */
     protected Image getImage(Pixels pixels) {
+        if (pixels.getImage().isLoaded()) {
+            return pixels.getImage();
+        }
         return iQuery.get(Image.class, pixels.getImage().getId());
     }
 
