@@ -79,7 +79,7 @@ public class ZarrPixelBuffer implements PixelBuffer {
     /** Zarr array corresponding to the current resolution level */
     private ZarrArray array;
 
-    /** { z, c, t, x, y, w, h } vs. tile byte array cache */
+    /** { resolutionLevel, z, c, t, x, y, w, h } vs. tile byte array cache */
     private final AsyncLoadingCache<List<Integer>, byte[]> tileCache;
 
     /** Whether or not the Zarr is on S3 or similar */
@@ -117,16 +117,18 @@ public class ZarrPixelBuffer implements PixelBuffer {
         tileCache = Caffeine.newBuilder()
                 .maximumSize(getSizeC())
                 .buildAsync(key -> {
-                    int z = key.get(0);
-                    int c = key.get(1);
-                    int t = key.get(2);
-                    int x = key.get(3);
-                    int y = key.get(4);
-                    int w = key.get(5);
-                    int h = key.get(6);
+                    int resolutionLevel = key.get(0);
+                    int z = key.get(1);
+                    int c = key.get(2);
+                    int t = key.get(3);
+                    int x = key.get(4);
+                    int y = key.get(5);
+                    int w = key.get(6);
+                    int h = key.get(7);
                     int[] shape = new int[] { 1, 1, 1, h, w };
                     byte[] innerBuffer =
                             new byte[length(shape) * getByteWidth()];
+                    setResolutionLevel(resolutionLevel);
                     return getTileDirect(z, c, t, x, y, w, h, innerBuffer);
                 });
     }
@@ -450,7 +452,8 @@ public class ZarrPixelBuffer implements PixelBuffer {
             channels = Arrays.asList(new Integer[] { 0, 1 ,2 });
         }
         for (Integer channel : channels) {
-            List<Integer> v = Arrays.asList(z, channel, t, x, y, w, h);
+            List<Integer> v = Arrays.asList(
+                    getResolutionLevel(), z, channel, t, x, y, w, h);
             keys.add(v);
             if (channel == c) {
                 key = v;
