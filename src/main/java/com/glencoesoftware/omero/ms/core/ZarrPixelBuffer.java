@@ -29,13 +29,13 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.stream.IntStream;
 
 import org.slf4j.LoggerFactory;
 
 import com.bc.zarr.DataType;
 import com.bc.zarr.ZarrArray;
-import com.bc.zarr.ZarrGroup;
 import com.github.benmanes.caffeine.cache.AsyncLoadingCache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 
@@ -70,9 +70,6 @@ public class ZarrPixelBuffer implements PixelBuffer {
     /** Max Plane Height */
     private final Integer maxPlaneHeight;
 
-    /** Root group of the OME-NGFF multiscale we are operating on */
-    private final ZarrGroup rootGroup;
-
     /** Zarr attributes present on the root group */
     private final Map<String, Object> rootGroupAttributes;
 
@@ -85,6 +82,13 @@ public class ZarrPixelBuffer implements PixelBuffer {
     /** Whether or not the Zarr is on S3 or similar */
     private final boolean isRemote;
 
+    /** Root path vs. metadata cache */
+    private final
+        AsyncLoadingCache<Path, Map<String, Object>> zarrMetadataCache;
+
+    /** Array path vs. ZarrArray cache */
+    private final AsyncLoadingCache<Path, ZarrArray> zarrArrayCache;
+
     /**
      * Default constructor
      * @param pixels Pixels metadata for the pixel buffer
@@ -94,14 +98,21 @@ public class ZarrPixelBuffer implements PixelBuffer {
      * @throws IOException
      */
     public ZarrPixelBuffer(Pixels pixels, Path root, Integer maxPlaneWidth,
-            Integer maxPlaneHeight)
+            Integer maxPlaneHeight,
+            AsyncLoadingCache<Path, Map<String, Object>> zarrMetadataCache,
+            AsyncLoadingCache<Path, ZarrArray> zarrArrayCache)
             throws IOException {
         log.info("Creating ZarrPixelBuffer");
         this.pixels = pixels;
         this.root = root;
+        this.zarrMetadataCache = zarrMetadataCache;
+        this.zarrArrayCache = zarrArrayCache;
         this.isRemote = root.toString().startsWith("s3://")? true : false;
-        rootGroup = ZarrGroup.open(this.root);
-        rootGroupAttributes = rootGroup.getAttributes();
+        try {
+            rootGroupAttributes = this.zarrMetadataCache.get(this.root).get();
+        } catch (ExecutionException|InterruptedException e) {
+            throw new IOException(e);
+        }
         if (!rootGroupAttributes.containsKey("multiscales")) {
             throw new IllegalArgumentException("Missing multiscales metadata!");
         }
@@ -766,8 +777,8 @@ public class ZarrPixelBuffer implements PixelBuffer {
                     "This Zarr file has no pixel data");
         }
         try {
-            array = ZarrArray.open(
-                    root.resolve(Integer.toString(this.resolutionLevel)));
+            array = zarrArrayCache.get(
+                    root.resolve(Integer.toString(this.resolutionLevel))).get();
         } catch (Exception e) {
             // FIXME: Throw the right exception
             throw new RuntimeException(e);

@@ -35,7 +35,9 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Splitter;
 import com.upplication.s3fs.OmeroS3FilesystemProvider;
-import com.github.benmanes.caffeine.cache.Cache;
+import com.bc.zarr.ZarrArray;
+import com.bc.zarr.ZarrGroup;
+import com.github.benmanes.caffeine.cache.AsyncLoadingCache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 
 import ome.api.IQuery;
@@ -70,34 +72,45 @@ public class PixelsService extends ome.io.nio.PixelsService {
     /** Max Plane Height */
     protected final Integer maxPlaneHeight;
 
-    /** OME NGFF LRU cache size */
-    private final long omeNgffPixelBufferCacheSize;
+    /** Zarr metadata and array cache size */
+    private final long zarrCacheSize;
 
     /** Copy of private IQuery also provided to ome.io.nio.PixelsService */
     private final IQuery iQuery;
 
-    /** LRU cache of pixels ID vs OME NGFF pixel buffers */
-    private Cache<Long, ZarrPixelBuffer> omeNgffPixelBufferCache;
+    /** Root path vs. metadata cache */
+    private final
+        AsyncLoadingCache<Path, Map<String, Object>> zarrMetadataCache;
+
+    /** Array path vs. ZarrArray cache */
+    private final AsyncLoadingCache<Path, ZarrArray> zarrArrayCache;
 
     public PixelsService(
             String path, boolean isReadOnlyRepo, File memoizerDirectory,
             long memoizerWait, FilePathResolver resolver, BackOff backOff,
             TileSizes sizes, IQuery iQuery,
-            long omeNgffPixelBufferCacheSize,
+            long zarrCacheSize,
             int maxPlaneWidth, int maxPlaneHeight) {
         super(
             path, isReadOnlyRepo, memoizerDirectory, memoizerWait, resolver,
             backOff, sizes, iQuery
         );
-        this.omeNgffPixelBufferCacheSize = omeNgffPixelBufferCacheSize;
-        log.info("OME NGFF pixel buffer cache size: {}",
-                omeNgffPixelBufferCacheSize);
+        this.zarrCacheSize = zarrCacheSize;
+        log.info("Zarr metadata and array cache size: {}", zarrCacheSize);
         this.maxPlaneWidth = maxPlaneWidth;
         this.maxPlaneHeight = maxPlaneHeight;
         this.iQuery = iQuery;
-        omeNgffPixelBufferCache = Caffeine.newBuilder()
-                .maximumSize(this.omeNgffPixelBufferCacheSize)
-                .build();
+        zarrMetadataCache = Caffeine.newBuilder()
+                .maximumSize(this.zarrCacheSize)
+                .buildAsync(key -> {
+                    ZarrGroup rootGroup = ZarrGroup.open(key);
+                    return rootGroup.getAttributes();
+                });
+        zarrArrayCache = Caffeine.newBuilder()
+                .maximumSize(this.zarrCacheSize)
+                .buildAsync(key -> {
+                    return ZarrArray.open(key);
+                });
     }
 
     /**
@@ -241,7 +254,8 @@ public class PixelsService extends ome.io.nio.PixelsService {
                     "No root for Mask:" + mask.getId());
         }
         return new ZarrPixelBuffer(
-                pixels, asPath(root), maxPlaneWidth, maxPlaneHeight);
+                pixels, asPath(root), maxPlaneWidth, maxPlaneHeight,
+                zarrMetadataCache, zarrArrayCache);
     }
 
     /**
@@ -269,7 +283,8 @@ public class PixelsService extends ome.io.nio.PixelsService {
             log.info("OME-NGFF root is: " + uri);
             try {
                 ZarrPixelBuffer v = new ZarrPixelBuffer(
-                    pixels, root, maxPlaneWidth, maxPlaneHeight);
+                    pixels, root, maxPlaneWidth, maxPlaneHeight,
+                    zarrMetadataCache, zarrArrayCache);
                 log.info("Using OME-NGFF pixel buffer");
                 return v;
             } catch (Exception e) {
@@ -299,8 +314,7 @@ public class PixelsService extends ome.io.nio.PixelsService {
      */
     @Override
     public PixelBuffer getPixelBuffer(Pixels pixels, boolean write) {
-        PixelBuffer pixelBuffer = omeNgffPixelBufferCache.get(
-                pixels.getId(), key -> createOmeNgffPixelBuffer(pixels));
+        PixelBuffer pixelBuffer = createOmeNgffPixelBuffer(pixels);
         if (pixelBuffer != null) {
             return pixelBuffer;
         }
