@@ -15,7 +15,7 @@
     <constructor-arg ref="backOff"/>
     <constructor-arg ref="tileSizes"/>
     <constructor-arg ref="internal-ome.api.IQuery"/>
-    <constructor-arg type="long" value="${omero.pixeldata.ome_ngff_pixel_buffer_cache_size:100}"/>
+    <constructor-arg type="long" value="${omero.pixeldata.zarr_cache_size:500}"/>
     <constructor-arg type="int" value="${omero.pixeldata.max_plane_height}"/>
     <constructor-arg type="int" value="${omero.pixeldata.max_plane_width}"/>
     <property name="metrics" ref="metrics"/>
