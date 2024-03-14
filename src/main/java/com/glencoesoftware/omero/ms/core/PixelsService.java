@@ -44,9 +44,11 @@ import ome.io.nio.BackOff;
 import ome.io.nio.FilePathResolver;
 import ome.io.nio.PixelBuffer;
 import ome.io.nio.TileSizes;
+import ome.model.IObject;
 import ome.model.core.Image;
 import ome.model.core.Pixels;
 import ome.model.meta.ExternalInfo;
+import ome.model.roi.Mask;
 
 /**
  * Subclass which overrides series retrieval to avoid the need for
@@ -155,43 +157,53 @@ public class PixelsService extends ome.io.nio.PixelsService {
 
 
     /**
-     * Retrieve {@link Image} URI.
-     * @param image loaded {@link Image} to check for a URI
+     * Retrieve {@link Mask} or {@link Image} URI.
+     * @param object loaded {@link Mask} or {@link Image} to check for a URI
      * @return URI or <code>null</code> if the object does not contain a URI
      * in its {@link ExternalInfo}.
      */
-    private String getUri(Image image) {
-        ExternalInfo externalInfo = image.getDetails().getExternalInfo();
+    public String getUri(IObject object) {
+        ExternalInfo externalInfo = object.getDetails().getExternalInfo();
         if (externalInfo == null) {
-            log.debug("Image:{} missing ExternalInfo", image.getId());
+            log.debug(
+                "{}:{} missing ExternalInfo",
+                object.getClass().getSimpleName(), object.getId());
             return null;
         }
 
         String entityType = externalInfo.getEntityType();
         if (entityType == null) {
-            log.debug("Image:{} missing ExternalInfo entityType", image.getId());
+            log.debug(
+                "{}:{} missing ExternalInfo entityType",
+                object.getClass().getSimpleName(), object.getId());
             return null;
         }
         if (!entityType.equals(NGFF_ENTITY_TYPE)) {
-            log.debug("Image:{}  unsupported ExternalInfo entityType {}",
-                image.getId(), entityType);
+            log.debug(
+                "{}:{} unsupported ExternalInfo entityType {}",
+                object.getClass().getSimpleName(), object.getId(), entityType);
             return null;
         }
 
         Long entityId = externalInfo.getEntityId();
         if (entityType == null) {
-            log.debug("Image:{} missing ExternalInfo entityId", image.getId());
+            log.debug(
+                "{}:{} missing ExternalInfo entityId",
+                object.getClass().getSimpleName(), object.getId());
             return null;
         }
         if (!entityId.equals(NGFF_ENTITY_ID)) {
-            log.debug("Image:{} unsupported ExternalInfo entityId {}",
-                image.getId(), entityId);
+            log.debug(
+                "{}:{} unsupported ExternalInfo entityId {}",
+                object.getClass().getSimpleName(), object.getId(), entityId);
             return null;
         }
 
         String uri = externalInfo.getLsid();
         if (uri == null) {
-            log.debug("Image:{} missing LSID", image.getId());
+            log.debug(
+                "{}:{} missing LSID",
+                object.getClass().getSimpleName(), object.getId());
             return null;
         }
         return uri;
@@ -203,7 +215,33 @@ public class PixelsService extends ome.io.nio.PixelsService {
      * @return See above.
      */
     protected Image getImage(Pixels pixels) {
+        if (pixels.getImage().isLoaded()) {
+            return pixels.getImage();
+        }
         return iQuery.get(Image.class, pixels.getImage().getId());
+    }
+
+    /**
+     * Returns a label image NGFF pixel buffer if it exists.
+     * @param mask Mask to retrieve a pixel buffer for.
+     * @return A pixel buffer instance.
+     * @throws IOException
+     */
+    public ZarrPixelBuffer getLabelImagePixelBuffer(Mask mask)
+            throws IOException {
+        Pixels pixels = new ome.model.core.Pixels();
+        pixels.setSizeX(mask.getWidth().intValue());
+        pixels.setSizeY(mask.getHeight().intValue());
+        pixels.setSizeC(1);
+        pixels.setSizeT(1);
+        pixels.setSizeZ(1);
+        String root = getUri(mask);
+        if (root == null) {
+            throw new IllegalArgumentException(
+                    "No root for Mask:" + mask.getId());
+        }
+        return new ZarrPixelBuffer(
+                pixels, asPath(root), maxPlaneWidth, maxPlaneHeight);
     }
 
     /**

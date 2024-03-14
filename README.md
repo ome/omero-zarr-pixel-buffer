@@ -16,7 +16,7 @@ The OMERO Zarr Pixel Buffer follows the principles of a classical OMERO.server
 [service extension](https://omero.readthedocs.io/en/v5.6.10/developers/Server/ExtendingOmero.html#services).
 
 After putting the `omero-zarr-pixel-buffer.jar` under `lib/server`, the server
-must be restarted. To use the ZarrPixelBuffer, an Image object must be populated with
+must be restarted. To use the ZarrPixelBuffer, an Image or Mask object must be populated with
 an [ExternalInfo](https://docs.openmicroscopy.org/omero-blitz/5.7.2/slice2html/omero/model/ExternalInfo.html)
 object with the following properties:
 
