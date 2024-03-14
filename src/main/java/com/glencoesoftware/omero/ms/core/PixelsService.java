@@ -102,15 +102,34 @@ public class PixelsService extends ome.io.nio.PixelsService {
         this.iQuery = iQuery;
         zarrMetadataCache = Caffeine.newBuilder()
                 .maximumSize(this.zarrCacheSize)
-                .buildAsync(key -> {
-                    ZarrGroup rootGroup = ZarrGroup.open(key);
-                    return rootGroup.getAttributes();
-                });
+                .buildAsync(PixelsService::getZarrMetadata);
         zarrArrayCache = Caffeine.newBuilder()
                 .maximumSize(this.zarrCacheSize)
-                .buildAsync(key -> {
-                    return ZarrArray.open(key);
-                });
+                .buildAsync(PixelsService::getZarrArray);
+    }
+
+    /**
+     * Retrieves Zarr metadata from a given path.
+     * @param root path to get Zarr metadata from
+     * @return See above.
+     * @throws IOException
+     */
+    public static Map<String, Object> getZarrMetadata(Path path)
+            throws IOException {
+        // FIXME: Really should be ZarrUtils.readAttributes() to allow for
+        // attribute retrieval from either a ZarrArray or ZarrGroup but ZarrPath
+        // is package private at the moment.
+        return ZarrGroup.open(path).getAttributes();
+    }
+
+    /**
+     * Opens a Zarr array at a given path.
+     * @param root path to open a Zarr array from
+     * @return See above.
+     * @throws IOException
+     */
+    public static ZarrArray getZarrArray(Path path) throws IOException {
+        return ZarrArray.open(path);
     }
 
     /**
