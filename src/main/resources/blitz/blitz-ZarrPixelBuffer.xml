@@ -6,7 +6,9 @@
         Defines the beans for microservices.
   </description>
 
-  <bean name="/OMERO/Pixels" class="com.glencoesoftware.omero.ms.core.PixelsService"
+  <alias name="${omero.pixeldata.pixels_service:ZarrPixelsService}" alias="/OMERO/Pixels"/>
+
+  <bean name="ZarrPixelsService" class="com.glencoesoftware.omero.ms.core.PixelsService"
         parent="filesystem">
     <!-- note constructor-args from parent bean -->
     <constructor-arg value="${omero.pixeldata.memoizer.dir}"/>
