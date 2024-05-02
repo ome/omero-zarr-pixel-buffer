@@ -45,6 +45,8 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 
 import picocli.CommandLine;
 import com.glencoesoftware.bioformats2raw.Converter;
+import com.glencoesoftware.omero.zarr.ZarrPixelsService;
+import com.glencoesoftware.omero.zarr.ZarrPixelBuffer;
 
 import loci.formats.FormatTools;
 import loci.formats.in.FakeReader;
@@ -68,10 +70,10 @@ public class ZarrPixelBufferTest {
                 pixels, path, maxPlaneWidth, maxPlaneHeight,
                 Caffeine.newBuilder()
                     .maximumSize(0)
-                    .buildAsync(PixelsService::getZarrMetadata),
+                    .buildAsync(ZarrPixelsService::getZarrMetadata),
                 Caffeine.newBuilder()
                     .maximumSize(0)
-                    .buildAsync(PixelsService::getZarrArray)
+                    .buildAsync(ZarrPixelsService::getZarrArray)
                 );
     }
 
