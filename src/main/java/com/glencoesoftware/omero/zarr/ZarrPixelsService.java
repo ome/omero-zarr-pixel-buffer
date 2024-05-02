@@ -242,15 +242,33 @@ public class ZarrPixelsService extends ome.io.nio.PixelsService {
     }
 
     /**
-     * Retrieve the {@link Image} for a particular set of pixels.
+     * Retrieve the {@link Image} for a particular set of pixels.  Where
+     * possible, does not initiate a query.
      * @param pixels Pixels set to retrieve the {@link Image} for.
      * @return See above.
      */
     protected Image getImage(Pixels pixels) {
         if (pixels.getImage().isLoaded()) {
+            // Will likely only be true when operating within a microservice
             return pixels.getImage();
         }
         return iQuery.get(Image.class, pixels.getImage().getId());
+    }
+
+    /**
+     * Retrieves the series for a given set of pixels.  Where possible, does not
+     * initiate a query.
+     * @param pixels Set of pixels to return the series for.
+     * @return The series as specified by the pixels parameters or
+     * <code>0</code> (the first series).
+     */
+    @Override
+    protected int getSeries(Pixels pixels) {
+        if (pixels.getImage().isLoaded()) {
+            // Will likely only be true when operating within a microservice
+            return pixels.getImage().getSeries();
+        }
+        return super.getSeries(pixels);
     }
 
     /**
