@@ -16,7 +16,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-package com.glencoesoftware.omero.ms.core;
+package com.glencoesoftware.omero.zarr;
 
 import java.awt.Dimension;
 import java.io.File;

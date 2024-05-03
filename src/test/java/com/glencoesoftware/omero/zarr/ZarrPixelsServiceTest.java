@@ -16,7 +16,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-package com.glencoesoftware.omero.ms.core;
+package com.glencoesoftware.omero.zarr;
 
 import java.io.IOException;
 import java.io.File;
@@ -43,7 +43,7 @@ import static omero.rtypes.rdouble;
 import static omero.rtypes.rlong;
 import static omero.rtypes.rstring;
 
-public class PixelsServiceTest {
+public class ZarrPixelsServiceTest {
 
   private ZarrPixelsService pixelsService;
   private String uuid = UUID.randomUUID().toString();
