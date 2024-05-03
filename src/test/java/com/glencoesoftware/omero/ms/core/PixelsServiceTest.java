@@ -27,6 +27,8 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import com.glencoesoftware.omero.zarr.ZarrPixelsService;
+
 import omero.ApiUsageException;
 import omero.model.ExternalInfo;
 import omero.model.ExternalInfoI;
@@ -43,7 +45,7 @@ import static omero.rtypes.rstring;
 
 public class PixelsServiceTest {
 
-  private PixelsService pixelsService;
+  private ZarrPixelsService pixelsService;
   private String uuid = UUID.randomUUID().toString();
   private String imageUri = "/data/ngff/image.zarr";
   private String labelUri = imageUri + "/0/labels/" + uuid;
@@ -58,7 +60,7 @@ public class PixelsServiceTest {
       pixelsDir.deleteOnExit();
       File memoDir = Files.createTempDirectory("memoizer").toFile();
       memoDir.deleteOnExit();
-      pixelsService = new PixelsService(
+      pixelsService = new ZarrPixelsService(
           pixelsDir.getAbsolutePath(), false, memoDir, 0L, null, null, null, null, 0, 0, 0);
       mask = new MaskI();
       image = new ImageI();

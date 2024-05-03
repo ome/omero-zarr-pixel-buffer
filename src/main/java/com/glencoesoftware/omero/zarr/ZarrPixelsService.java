@@ -16,7 +16,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-package com.glencoesoftware.omero.ms.core;
+package com.glencoesoftware.omero.zarr;
 
 import java.io.File;
 import java.io.IOException;
@@ -58,10 +58,10 @@ import ome.model.roi.Mask;
  * @author Chris Allan <callan@glencoesoftware.com>
  *
  */
-public class PixelsService extends ome.io.nio.PixelsService {
+public class ZarrPixelsService extends ome.io.nio.PixelsService {
 
     private static final org.slf4j.Logger log =
-            LoggerFactory.getLogger(PixelsService.class);
+            LoggerFactory.getLogger(ZarrPixelsService.class);
 
     public static final String NGFF_ENTITY_TYPE = "com.glencoesoftware.ngff:multiscales";
     public static final long NGFF_ENTITY_ID = 3;
@@ -85,7 +85,7 @@ public class PixelsService extends ome.io.nio.PixelsService {
     /** Array path vs. ZarrArray cache */
     private final AsyncLoadingCache<Path, ZarrArray> zarrArrayCache;
 
-    public PixelsService(
+    public ZarrPixelsService(
             String path, boolean isReadOnlyRepo, File memoizerDirectory,
             long memoizerWait, FilePathResolver resolver, BackOff backOff,
             TileSizes sizes, IQuery iQuery,
@@ -102,10 +102,10 @@ public class PixelsService extends ome.io.nio.PixelsService {
         this.iQuery = iQuery;
         zarrMetadataCache = Caffeine.newBuilder()
                 .maximumSize(this.zarrCacheSize)
-                .buildAsync(PixelsService::getZarrMetadata);
+                .buildAsync(ZarrPixelsService::getZarrMetadata);
         zarrArrayCache = Caffeine.newBuilder()
                 .maximumSize(this.zarrCacheSize)
-                .buildAsync(PixelsService::getZarrArray);
+                .buildAsync(ZarrPixelsService::getZarrArray);
     }
 
     /**
@@ -242,15 +242,33 @@ public class PixelsService extends ome.io.nio.PixelsService {
     }
 
     /**
-     * Retrieve the {@link Image} for a particular set of pixels.
+     * Retrieve the {@link Image} for a particular set of pixels.  Where
+     * possible, does not initiate a query.
      * @param pixels Pixels set to retrieve the {@link Image} for.
      * @return See above.
      */
     protected Image getImage(Pixels pixels) {
         if (pixels.getImage().isLoaded()) {
+            // Will likely only be true when operating within a microservice
             return pixels.getImage();
         }
         return iQuery.get(Image.class, pixels.getImage().getId());
+    }
+
+    /**
+     * Retrieves the series for a given set of pixels.  Where possible, does not
+     * initiate a query.
+     * @param pixels Set of pixels to return the series for.
+     * @return The series as specified by the pixels parameters or
+     * <code>0</code> (the first series).
+     */
+    @Override
+    protected int getSeries(Pixels pixels) {
+        if (pixels.getImage().isLoaded()) {
+            // Will likely only be true when operating within a microservice
+            return pixels.getImage().getSeries();
+        }
+        return super.getSeries(pixels);
     }
 
     /**

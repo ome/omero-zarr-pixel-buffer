@@ -35,9 +35,9 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 
-import com.glencoesoftware.omero.ms.core.OmeroAmazonS3ClientFactory;
-import com.glencoesoftware.omero.ms.core.OmeroS3FileSystem;
-import com.glencoesoftware.omero.ms.core.OmeroS3ReadOnlySeekableByteChannel;
+import com.glencoesoftware.omero.zarr.OmeroAmazonS3ClientFactory;
+import com.glencoesoftware.omero.zarr.OmeroS3FileSystem;
+import com.glencoesoftware.omero.zarr.OmeroS3ReadOnlySeekableByteChannel;
 import com.google.common.base.Preconditions;
 import com.upplication.s3fs.attribute.S3BasicFileAttributes;
 
