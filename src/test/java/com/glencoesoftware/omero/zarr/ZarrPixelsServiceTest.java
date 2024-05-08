@@ -16,7 +16,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-package com.glencoesoftware.omero.ms.core;
+package com.glencoesoftware.omero.zarr;
 
 import java.io.IOException;
 import java.io.File;
@@ -43,7 +43,7 @@ import static omero.rtypes.rdouble;
 import static omero.rtypes.rlong;
 import static omero.rtypes.rstring;
 
-public class PixelsServiceTest {
+public class ZarrPixelsServiceTest {
 
   private ZarrPixelsService pixelsService;
   private String uuid = UUID.randomUUID().toString();
@@ -51,8 +51,9 @@ public class PixelsServiceTest {
   private String labelUri = imageUri + "/0/labels/" + uuid;
   private Image image;
   private Mask mask;
+  private ome.model.IObject object;
   private String ENTITY_TYPE = "com.glencoesoftware.ngff:multiscales";
-  private int ENTITY_ID = 3;
+  private long ENTITY_ID = 3;
 
   @Before
   public void setUp() throws IOException {
@@ -66,7 +67,7 @@ public class PixelsServiceTest {
       image = new ImageI();
   }
 
-  private void addExternalInfo(IObject object, Integer entityId, String entityType, String lsid, String uuid) {
+  private void addExternalInfo(IObject object, Long entityId, String entityType, String lsid, String uuid) {
         ExternalInfo externalInfo = new ExternalInfoI();
         externalInfo.setEntityId(rlong(entityId));
         externalInfo.setEntityType(rstring(entityType));
@@ -82,51 +83,80 @@ public class PixelsServiceTest {
   @Test
   public void testDefault() throws ApiUsageException, IOException {
       addExternalInfo(mask, ENTITY_ID, ENTITY_TYPE, labelUri, uuid);
-      Assert.assertEquals(pixelsService.getUri((ome.model.roi.Mask) new IceMapper().reverse(mask)), labelUri);
+      object = (ome.model.roi.Mask) new IceMapper().reverse(mask);
+      Assert.assertEquals(pixelsService.getUri(object), labelUri);
+      Assert.assertEquals(pixelsService.getUri(object, ENTITY_TYPE, ENTITY_ID), labelUri);
 
       addExternalInfo(image, ENTITY_ID, ENTITY_TYPE, imageUri, uuid);
-      Assert.assertEquals(pixelsService.getUri((ome.model.core.Image) new IceMapper().reverse(image)), imageUri);
+      object = (ome.model.core.Image) new IceMapper().reverse(image);
+      Assert.assertEquals(pixelsService.getUri(object), imageUri);
+      Assert.assertEquals(pixelsService.getUri(object, ENTITY_TYPE, ENTITY_ID), imageUri);
   }
 
   @Test
   public void testGetUriNoExternalInfo() throws ApiUsageException, IOException {
-      Assert.assertNull(pixelsService.getUri((ome.model.roi.Mask) new IceMapper().reverse(mask)));
-      Assert.assertNull(pixelsService.getUri((ome.model.core.Image) new IceMapper().reverse(image)));
+      object = (ome.model.roi.Mask) new IceMapper().reverse(mask);
+      Assert.assertNull(pixelsService.getUri(object));
+      Assert.assertNull(pixelsService.getUri(object, ENTITY_TYPE, ENTITY_ID));
+
+      object = (ome.model.core.Image) new IceMapper().reverse(image);
+      Assert.assertNull(pixelsService.getUri(object));
+      Assert.assertNull(pixelsService.getUri(object, ENTITY_TYPE, ENTITY_ID));
   }
 
   @Test
   public void testGetUriNoUuid() throws ApiUsageException, IOException {
       addExternalInfo(mask, ENTITY_ID, ENTITY_TYPE, labelUri, null);
-      Assert.assertEquals(pixelsService.getUri((ome.model.roi.Mask) new IceMapper().reverse(mask)), labelUri);
+      object = (ome.model.roi.Mask) new IceMapper().reverse(mask);
+      Assert.assertEquals(pixelsService.getUri(object), labelUri);
+      Assert.assertEquals(pixelsService.getUri(object, ENTITY_TYPE, ENTITY_ID), labelUri);
 
       addExternalInfo(image, ENTITY_ID, ENTITY_TYPE, imageUri, null);
-      Assert.assertEquals(pixelsService.getUri((ome.model.core.Image) new IceMapper().reverse(image)), imageUri);
+      object = (ome.model.core.Image) new IceMapper().reverse(image);
+      Assert.assertEquals(pixelsService.getUri(object), imageUri);
+      Assert.assertEquals(pixelsService.getUri(object, ENTITY_TYPE, ENTITY_ID), imageUri);
   }
 
   @Test
   public void testGetUriNoLsid() throws ApiUsageException, IOException {
       addExternalInfo(mask, ENTITY_ID, ENTITY_TYPE, null, uuid);
-      Assert.assertNull(pixelsService.getUri((ome.model.roi.Mask) new IceMapper().reverse(mask)));
+      object = (ome.model.roi.Mask) new IceMapper().reverse(mask);
+      Assert.assertNull(pixelsService.getUri(object));
+      Assert.assertNull(pixelsService.getUri(object, ENTITY_TYPE, ENTITY_ID));
 
       addExternalInfo(image, ENTITY_ID, ENTITY_TYPE, null, uuid);
-      Assert.assertNull(pixelsService.getUri((ome.model.core.Image) new IceMapper().reverse(image)));
+      object = (ome.model.core.Image) new IceMapper().reverse(image);
+      Assert.assertNull(pixelsService.getUri(object));
+      Assert.assertNull(pixelsService.getUri(object, ENTITY_TYPE, ENTITY_ID));
   }
 
   @Test
   public void testGetUriWrongEntityType() throws ApiUsageException, IOException {
       addExternalInfo(mask, ENTITY_ID, "multiscales", labelUri, uuid);
-      Assert.assertNull(pixelsService.getUri((ome.model.roi.Mask) new IceMapper().reverse(mask)));
+      object = (ome.model.roi.Mask) new IceMapper().reverse(mask);
+      Assert.assertNull(pixelsService.getUri(object));
+      Assert.assertNull(pixelsService.getUri(object, ENTITY_TYPE, ENTITY_ID));
+      Assert.assertEquals(pixelsService.getUri(object, "multiscales", ENTITY_ID), labelUri);
 
       addExternalInfo(image, ENTITY_ID, "multiscales", imageUri, uuid);
-      Assert.assertNull(pixelsService.getUri((ome.model.core.Image) new IceMapper().reverse(image)));
+      object = (ome.model.core.Image) new IceMapper().reverse(image);
+      Assert.assertNull(pixelsService.getUri(object));
+      Assert.assertNull(pixelsService.getUri(object, ENTITY_TYPE, ENTITY_ID));
+      Assert.assertEquals(pixelsService.getUri(object, "multiscales", ENTITY_ID), imageUri);
   }
 
   @Test
   public void testGetUriWrongEntityId() throws ApiUsageException, IOException {
-    addExternalInfo(mask, 1, ENTITY_TYPE, labelUri, uuid);
-    Assert.assertNull(pixelsService.getUri((ome.model.roi.Mask) new IceMapper().reverse(mask)));
+    addExternalInfo(mask, 1L, ENTITY_TYPE, labelUri, uuid);
+    object = (ome.model.roi.Mask) new IceMapper().reverse(mask);
+    Assert.assertNull(pixelsService.getUri(object));
+    Assert.assertNull(pixelsService.getUri(object, ENTITY_TYPE, ENTITY_ID));
+    Assert.assertEquals(pixelsService.getUri(object, ENTITY_TYPE, 1L), labelUri);
 
-    addExternalInfo(image, 1, ENTITY_TYPE, imageUri, uuid);
-    Assert.assertNull(pixelsService.getUri((ome.model.core.Image) new IceMapper().reverse(image)));
+    addExternalInfo(image, 1L, ENTITY_TYPE, imageUri, uuid);
+    object = (ome.model.core.Image) new IceMapper().reverse(image);
+    Assert.assertNull(pixelsService.getUri(object));
+    Assert.assertNull(pixelsService.getUri(object, ENTITY_TYPE, ENTITY_ID));
+    Assert.assertEquals(pixelsService.getUri(object, ENTITY_TYPE, 1L), imageUri);
   }
 }

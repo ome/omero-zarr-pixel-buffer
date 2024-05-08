@@ -187,14 +187,29 @@ public class ZarrPixelsService extends ome.io.nio.PixelsService {
         return Paths.get(ngffDir);
     }
 
-
     /**
-     * Retrieve {@link Mask} or {@link Image} URI.
+     * Retrieve {@link Mask} or {@link Image} URI stored under {@link ExternalInfo}.
      * @param object loaded {@link Mask} or {@link Image} to check for a URI
-     * @return URI or <code>null</code> if the object does not contain a URI
-     * in its {@link ExternalInfo}.
+     * @return the value of {@link ExternalInfo.lsid}, <code>null</code> if the object
+     * does not have an {@link ExternalInfo} with a valid {@link ExternalInfo.lsid} atttribute
+     * or if {@link ExternalInfo.entityType} is not equal to {@link NGFF_ENTITY_TYPE} or if
+     * {@link ExternalInfo.entityId} is not equal to {@link NGFF_ENTITY_ID}.
      */
     public String getUri(IObject object) {
+        return getUri(object, NGFF_ENTITY_TYPE, NGFF_ENTITY_ID);
+    }
+
+    /**
+     * Retrieve {@link Mask} or {@link Image} URI stored under {@link ExternalInfo}
+     * @param object loaded {@link Mask} or {@link Image} to check for a URI
+     * @param targetEntityType expected entityType in the object {@link ExternalInfo}
+     * @param targetEntityId expected entityType in the object {@link ExternalInfo}
+     * @return the value of {@link ExternalInfo.lsid}, <code>null</code> if the object
+     * does not have an {@link ExternalInfo} with a valid {@link ExternalInfo.lsid} atttribute
+     * or if {@link ExternalInfo.entityType} is not equal to <code>targetEntityType</code> or if
+     * {@link ExternalInfo.entityId} is not equal to <code>targetEntityId</code> .
+     */
+    public String getUri(IObject object, String targetEntityType, Long targetEntityId) {
         ExternalInfo externalInfo = object.getDetails().getExternalInfo();
         if (externalInfo == null) {
             log.debug(
@@ -210,7 +225,7 @@ public class ZarrPixelsService extends ome.io.nio.PixelsService {
                 object.getClass().getSimpleName(), object.getId());
             return null;
         }
-        if (!entityType.equals(NGFF_ENTITY_TYPE)) {
+        if (!entityType.equals(targetEntityType)) {
             log.debug(
                 "{}:{} unsupported ExternalInfo entityType {}",
                 object.getClass().getSimpleName(), object.getId(), entityType);
@@ -224,7 +239,7 @@ public class ZarrPixelsService extends ome.io.nio.PixelsService {
                 object.getClass().getSimpleName(), object.getId());
             return null;
         }
-        if (!entityId.equals(NGFF_ENTITY_ID)) {
+        if (!entityId.equals(targetEntityId)) {
             log.debug(
                 "{}:{} unsupported ExternalInfo entityId {}",
                 object.getClass().getSimpleName(), object.getId(), entityId);
