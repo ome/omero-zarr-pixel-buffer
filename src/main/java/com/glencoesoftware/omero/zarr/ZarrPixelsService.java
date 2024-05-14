@@ -140,7 +140,7 @@ public class ZarrPixelsService extends ome.io.nio.PixelsService {
      * directory has not been specified in configuration.
      * @throws IOException
      */
-    private Path asPath(String ngffDir) throws IOException {
+    public static Path asPath(String ngffDir) throws IOException {
         if (ngffDir.isEmpty()) {
             return null;
         }
