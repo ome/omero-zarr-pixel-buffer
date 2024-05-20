@@ -325,7 +325,7 @@ public class ZarrPixelsService extends ome.io.nio.PixelsService {
             String uri = getUri(image);
             if (uri == null) {
                 // Quick exit if we think we're OME-NGFF but there is no URI
-                if ("OMEXML".equals(image.getFormat().getValue())) {
+                if (image.getFormat() != null && "OMEXML".equals(image.getFormat().getValue())) {
                     throw new LockTimeout("Import in progress.", 15*1000, 0);
                 }
                 log.debug("No OME-NGFF root");
