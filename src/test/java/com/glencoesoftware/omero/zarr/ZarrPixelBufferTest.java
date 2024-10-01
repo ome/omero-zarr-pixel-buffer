@@ -41,6 +41,7 @@ import org.junit.Test;
 
 import com.bc.zarr.ZarrArray;
 import com.bc.zarr.ZarrGroup;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.benmanes.caffeine.cache.Caffeine;
 
 import picocli.CommandLine;
@@ -498,6 +499,36 @@ public class ZarrPixelBufferTest {
             Assert.assertEquals(ib.get(1), 1);
             Assert.assertEquals(ib.get(2), 6);
             Assert.assertEquals(ib.get(3), 7);
+        }
+    }
+
+    @Test
+    public void testIntegerOverflow()
+            throws IOException, InvalidRangeException {
+        int sizeT = 1;
+        int sizeC = 3;
+        int sizeZ = 1;
+        int sizeY = 1;
+        int sizeX = 1;
+        int resolutions = 1;
+        Pixels pixels = new Pixels(
+                null, null, sizeX, sizeY, sizeZ, sizeC, sizeT, "", null);
+        Path output = writeTestZarr(
+                sizeT, sizeC, sizeZ, sizeY, sizeX, "uint16",
+                resolutions);
+
+        ObjectMapper mapper = new ObjectMapper();
+        HashMap<String, Object> zArray = mapper.readValue(
+                Files.readAllBytes(output.resolve("0/0/.zarray")),
+                HashMap.class);
+        List<Integer> shape = (List<Integer>) zArray.get("shape");
+        shape.set(3, 50000);
+        shape.set(4, 50000);
+        mapper.writeValue(output.resolve("0/0/.zarray").toFile(), zArray);
+        try (ZarrPixelBuffer zpbuf =
+                createPixelBuffer(pixels, output.resolve("0"), 32, 32)) {
+            PixelData pixelData = zpbuf.getTile(0, 0, 0, 0, 0, 50000, 50000);
+            Assert.assertNull(pixelData);
         }
     }
 
