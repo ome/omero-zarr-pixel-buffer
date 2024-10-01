@@ -326,21 +326,21 @@ public class ZarrPixelBuffer implements PixelBuffer {
             throws DimensionsOutOfBoundsException {
         if (x != null && (x > getSizeX() - 1 || x < 0)) {
             throw new DimensionsOutOfBoundsException("X '" + x
-                    + "' greater than sizeX '" + getSizeX() + "'.");
+                    + "' greater than sizeX '" + getSizeX() + "' or < '0'.");
         }
         if (y != null && (y > getSizeY() - 1 || y < 0)) {
             throw new DimensionsOutOfBoundsException("Y '" + y
-                    + "' greater than sizeY '" + getSizeY() + "'.");
+                    + "' greater than sizeY '" + getSizeY() + "' or < '0'.");
         }
 
         if (z != null && (z > getSizeZ() - 1 || z < 0)) {
             throw new DimensionsOutOfBoundsException("Z '" + z
-                    + "' greater than sizeZ '" + getSizeZ() + "'.");
+                    + "' greater than sizeZ '" + getSizeZ() + "' or < '0'.");
         }
 
         if (c != null && (c > getSizeC() - 1 || c < 0)) {
             throw new DimensionsOutOfBoundsException("C '" + c
-                    + "' greater than sizeC '" + getSizeC() + "'.");
+                    + "' greater than sizeC '" + getSizeC() + "' or < '0'.");
         }
 
         if (t != null && (t > getSizeT() - 1 || t < 0)) {
