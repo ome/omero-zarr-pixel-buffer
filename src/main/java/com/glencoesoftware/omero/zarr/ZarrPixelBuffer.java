@@ -326,6 +326,7 @@ public class ZarrPixelBuffer implements PixelBuffer {
      * Implemented as specified by {@link PixelBuffer} I/F.
      * @see PixelBuffer#checkBounds(Integer, Integer, Integer, Integer, Integer)
      */
+    @Override
     public void checkBounds(Integer x, Integer y, Integer z, Integer c,
             Integer t)
             throws DimensionsOutOfBoundsException {
