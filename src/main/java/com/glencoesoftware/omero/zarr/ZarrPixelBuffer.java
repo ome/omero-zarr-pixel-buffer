@@ -137,6 +137,8 @@ public class ZarrPixelBuffer implements PixelBuffer {
                     int w = key.get(6);
                     int h = key.get(7);
                     int[] shape = new int[] { 1, 1, 1, h, w };
+                    // Check planar read size (sizeX and sizeY only)
+                    checkReadSize(Arrays.copyOfRange(shape, 3, 5));
                     byte[] innerBuffer =
                             new byte[(int) length(shape) * getByteWidth()];
                     setResolutionLevel(resolutionLevel);
