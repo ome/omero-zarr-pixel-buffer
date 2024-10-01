@@ -503,7 +503,7 @@ public class ZarrPixelBufferTest {
     }
 
     @Test
-    public void testIntegerOverflow()
+    public void testTileIntegerOverflow()
             throws IOException, InvalidRangeException {
         int sizeT = 1;
         int sizeC = 3;
@@ -517,6 +517,8 @@ public class ZarrPixelBufferTest {
                 sizeT, sizeC, sizeZ, sizeY, sizeX, "uint16",
                 resolutions);
 
+        // Hack the .zarray so we can appear as though we have more data than
+        // we actually have written above.
         ObjectMapper mapper = new ObjectMapper();
         HashMap<String, Object> zArray = mapper.readValue(
                 Files.readAllBytes(output.resolve("0/0/.zarray")),
