@@ -534,8 +534,9 @@ public class ZarrPixelBufferTest {
         }
     }
 
-    @Test
-    public void testTileExceedsMax() throws IOException, InvalidRangeException {
+    @Test(expected = DimensionsOutOfBoundsException.class)
+    public void testTileExceedsMinMax()
+            throws IOException, InvalidRangeException {
         int sizeT = 1;
         int sizeC = 3;
         int sizeZ = 1;
@@ -550,8 +551,9 @@ public class ZarrPixelBufferTest {
 
         try (ZarrPixelBuffer zpbuf =
                 createPixelBuffer(pixels, output.resolve("0"), 32, 32)) {
-            PixelData pixelData = zpbuf.getTile(0, 0, 0, 0, 0, 32, 33);
-            Assert.assertNull(pixelData);
+            Assert.assertNull(zpbuf.getTile(0, 0, 0, 0, 0, 32, 33));
+            // Throws exception
+            zpbuf.getTile(0, 0, 0, -1, 0, 1, 1);
         }
     }
 
