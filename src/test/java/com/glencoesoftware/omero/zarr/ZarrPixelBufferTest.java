@@ -32,6 +32,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletionException;
 import java.util.stream.IntStream;
 
 import org.junit.Assert;
@@ -502,7 +503,7 @@ public class ZarrPixelBufferTest {
         }
     }
 
-    @Test
+    @Test(expected = IllegalArgumentException.class)
     public void testTileIntegerOverflow()
             throws IOException, InvalidRangeException {
         int sizeT = 1;
@@ -534,9 +535,8 @@ public class ZarrPixelBufferTest {
         }
     }
 
-    @Test(expected = DimensionsOutOfBoundsException.class)
-    public void testTileExceedsMinMax()
-            throws IOException, InvalidRangeException {
+    @Test(expected = IllegalArgumentException.class)
+    public void testTileExceedsMinMax() throws IOException {
         int sizeT = 1;
         int sizeC = 3;
         int sizeZ = 1;

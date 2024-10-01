@@ -28,7 +28,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.IntStream;
 
@@ -481,10 +481,15 @@ public class ZarrPixelBuffer implements PixelBuffer {
             // of channels can be unpredictable.
             tileCache.synchronous().invalidateAll();
         }
-        CompletableFuture<Map<List<Integer>, byte[]>> future =
-                tileCache.getAll(keys);
-        Map<List<Integer>, byte[]> values = future.join();
-        return toPixelData(values.get(key));
+        try {
+            return toPixelData(tileCache.getAll(keys).join().get(key));
+        } catch (CompletionException e) {
+            if (e.getCause() instanceof IllegalArgumentException) {
+                // Request arguments out of bounds
+                throw (IllegalArgumentException) e.getCause();
+            }
+            throw e;
+        }
     }
 
     @Override
