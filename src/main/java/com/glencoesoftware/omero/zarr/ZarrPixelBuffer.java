@@ -138,7 +138,7 @@ public class ZarrPixelBuffer implements PixelBuffer {
                     int h = key.get(7);
                     int[] shape = new int[] { 1, 1, 1, h, w };
                     byte[] innerBuffer =
-                            new byte[length(shape) * getByteWidth()];
+                            new byte[(int) length(shape) * getByteWidth()];
                     setResolutionLevel(resolutionLevel);
                     return getTileDirect(z, c, t, x, y, w, h, innerBuffer);
                 });
@@ -181,25 +181,17 @@ public class ZarrPixelBuffer implements PixelBuffer {
      * "https://numpy.org/doc/stable/reference/generated/numpy.shape.html">
      * numpy.shape</a> documentation
      */
-    private int length(int[] shape) {
-        return IntStream.of(shape).reduce(1, Math::multiplyExact);
+    private long length(int[] shape) {
+        return IntStream.of(shape)
+                .mapToLong(a -> (long) a)
+                .reduce(1, Math::multiplyExact);
     }
 
     private void read(byte[] buffer, int[] shape, int[] offset)
             throws IOException {
-        Integer sizeX = shape[4];
-        Integer sizeY = shape[3];
-        if((sizeX * sizeY) > (maxPlaneWidth*maxPlaneHeight)) {
-            throw new IllegalArgumentException(String.format(
-                    "Requested Region Size %d * %d > max plane size %d * %d", sizeX,
-                    sizeY, maxPlaneWidth, maxPlaneHeight));
-        }
-        if (sizeX < 0) {
-            throw new IllegalArgumentException("width < 0");
-        }
-        if (sizeY < 0) {
-            throw new IllegalArgumentException("height < 0");
-        }
+        // Check planar read size (sizeX and sizeY only)
+        checkReadSize(Arrays.copyOfRange(shape, 3, 5));
+
         try {
             ByteBuffer asByteBuffer = ByteBuffer.wrap(buffer);
             DataType dataType = array.getDataType();
@@ -351,7 +343,17 @@ public class ZarrPixelBuffer implements PixelBuffer {
 
         if (t != null && (t > getSizeT() - 1 || t < 0)) {
             throw new DimensionsOutOfBoundsException("T '" + t
-                    + "' greater than sizeT '" + getSizeT() + "'.");
+                    + "' greater than sizeT '" + getSizeT() + "' or < '0'.");
+        }
+    }
+
+    public void checkReadSize(int[] shape) {
+        long length = length(shape);
+        long maxLength = maxPlaneWidth * maxPlaneHeight;
+        if (length > maxLength) {
+            throw new IllegalArgumentException(String.format(
+                    "Requested shape %s > max plane size %d * %d",
+                    Arrays.toString(shape), maxPlaneWidth, maxPlaneHeight));
         }
     }
 
