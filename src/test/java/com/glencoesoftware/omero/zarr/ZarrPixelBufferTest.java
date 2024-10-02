@@ -32,7 +32,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletionException;
 import java.util.stream.IntStream;
 
 import org.junit.Assert;
@@ -530,8 +529,7 @@ public class ZarrPixelBufferTest {
         mapper.writeValue(output.resolve("0/0/.zarray").toFile(), zArray);
         try (ZarrPixelBuffer zpbuf =
                 createPixelBuffer(pixels, output.resolve("0"), 32, 32)) {
-            PixelData pixelData = zpbuf.getTile(0, 0, 0, 0, 0, 50000, 50000);
-            Assert.assertNull(pixelData);
+            zpbuf.getTile(0, 0, 0, 0, 0, 50000, 50000);
         }
     }
 

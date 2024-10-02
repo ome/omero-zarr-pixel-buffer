@@ -28,7 +28,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.IntStream;
 
@@ -137,8 +136,6 @@ public class ZarrPixelBuffer implements PixelBuffer {
                     int w = key.get(6);
                     int h = key.get(7);
                     int[] shape = new int[] { 1, 1, 1, h, w };
-                    // Check planar read size (sizeX and sizeY only)
-                    checkReadSize(Arrays.copyOfRange(shape, 3, 5));
                     byte[] innerBuffer =
                             new byte[(int) length(shape) * getByteWidth()];
                     setResolutionLevel(resolutionLevel);
@@ -459,6 +456,11 @@ public class ZarrPixelBuffer implements PixelBuffer {
         checkBounds(x, y, z, c, t);
         //Check check bottom-right of tile in bounds
         checkBounds(x + w - 1, y + h - 1, z, c, t);
+        //Check planar read size (sizeX and sizeY only), essential that this
+        //happens before the similar check in read().  Otherwise we will
+        //potentially allocate massive inner buffers in the tile cache
+        //asynchronous entry builder that will never be used.
+        checkReadSize(new int[] { w, h });
 
         List<List<Integer>> keys = new ArrayList<List<Integer>>();
         List<Integer> key = null;
@@ -481,15 +483,7 @@ public class ZarrPixelBuffer implements PixelBuffer {
             // of channels can be unpredictable.
             tileCache.synchronous().invalidateAll();
         }
-        try {
-            return toPixelData(tileCache.getAll(keys).join().get(key));
-        } catch (CompletionException e) {
-            if (e.getCause() instanceof IllegalArgumentException) {
-                // Request arguments out of bounds
-                throw (IllegalArgumentException) e.getCause();
-            }
-            throw e;
-        }
+        return toPixelData(tileCache.getAll(keys).join().get(key));
     }
 
     @Override
