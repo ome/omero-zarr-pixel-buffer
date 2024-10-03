@@ -28,7 +28,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.IntStream;
 
@@ -138,7 +137,7 @@ public class ZarrPixelBuffer implements PixelBuffer {
                     int h = key.get(7);
                     int[] shape = new int[] { 1, 1, 1, h, w };
                     byte[] innerBuffer =
-                            new byte[length(shape) * getByteWidth()];
+                            new byte[(int) length(shape) * getByteWidth()];
                     setResolutionLevel(resolutionLevel);
                     return getTileDirect(z, c, t, x, y, w, h, innerBuffer);
                 });
@@ -181,25 +180,17 @@ public class ZarrPixelBuffer implements PixelBuffer {
      * "https://numpy.org/doc/stable/reference/generated/numpy.shape.html">
      * numpy.shape</a> documentation
      */
-    private int length(int[] shape) {
-        return IntStream.of(shape).reduce(1, Math::multiplyExact);
+    private long length(int[] shape) {
+        return IntStream.of(shape)
+                .mapToLong(a -> (long) a)
+                .reduce(1, Math::multiplyExact);
     }
 
     private void read(byte[] buffer, int[] shape, int[] offset)
             throws IOException {
-        Integer sizeX = shape[4];
-        Integer sizeY = shape[3];
-        if((sizeX * sizeY) > (maxPlaneWidth*maxPlaneHeight)) {
-            throw new IllegalArgumentException(String.format(
-                    "Requested Region Size %d * %d > max plane size %d * %d", sizeX,
-                    sizeY, maxPlaneWidth, maxPlaneHeight));
-        }
-        if (sizeX < 0) {
-            throw new IllegalArgumentException("width < 0");
-        }
-        if (sizeY < 0) {
-            throw new IllegalArgumentException("height < 0");
-        }
+        // Check planar read size (sizeX and sizeY only)
+        checkReadSize(Arrays.copyOfRange(shape, 3, 5));
+
         try {
             ByteBuffer asByteBuffer = ByteBuffer.wrap(buffer);
             DataType dataType = array.getDataType();
@@ -326,31 +317,42 @@ public class ZarrPixelBuffer implements PixelBuffer {
      * Implemented as specified by {@link PixelBuffer} I/F.
      * @see PixelBuffer#checkBounds(Integer, Integer, Integer, Integer, Integer)
      */
+    @Override
     public void checkBounds(Integer x, Integer y, Integer z, Integer c,
             Integer t)
             throws DimensionsOutOfBoundsException {
         if (x != null && (x > getSizeX() - 1 || x < 0)) {
             throw new DimensionsOutOfBoundsException("X '" + x
-                    + "' greater than sizeX '" + getSizeX() + "'.");
+                    + "' greater than sizeX '" + getSizeX() + "' or < '0'.");
         }
         if (y != null && (y > getSizeY() - 1 || y < 0)) {
             throw new DimensionsOutOfBoundsException("Y '" + y
-                    + "' greater than sizeY '" + getSizeY() + "'.");
+                    + "' greater than sizeY '" + getSizeY() + "' or < '0'.");
         }
 
         if (z != null && (z > getSizeZ() - 1 || z < 0)) {
             throw new DimensionsOutOfBoundsException("Z '" + z
-                    + "' greater than sizeZ '" + getSizeZ() + "'.");
+                    + "' greater than sizeZ '" + getSizeZ() + "' or < '0'.");
         }
 
         if (c != null && (c > getSizeC() - 1 || c < 0)) {
             throw new DimensionsOutOfBoundsException("C '" + c
-                    + "' greater than sizeC '" + getSizeC() + "'.");
+                    + "' greater than sizeC '" + getSizeC() + "' or < '0'.");
         }
 
         if (t != null && (t > getSizeT() - 1 || t < 0)) {
             throw new DimensionsOutOfBoundsException("T '" + t
-                    + "' greater than sizeT '" + getSizeT() + "'.");
+                    + "' greater than sizeT '" + getSizeT() + "' or < '0'.");
+        }
+    }
+
+    public void checkReadSize(int[] shape) {
+        long length = length(shape);
+        long maxLength = maxPlaneWidth * maxPlaneHeight;
+        if (length > maxLength) {
+            throw new IllegalArgumentException(String.format(
+                    "Requested shape %s > max plane size %d * %d",
+                    Arrays.toString(shape), maxPlaneWidth, maxPlaneHeight));
         }
     }
 
@@ -454,6 +456,11 @@ public class ZarrPixelBuffer implements PixelBuffer {
         checkBounds(x, y, z, c, t);
         //Check check bottom-right of tile in bounds
         checkBounds(x + w - 1, y + h - 1, z, c, t);
+        //Check planar read size (sizeX and sizeY only), essential that this
+        //happens before the similar check in read().  Otherwise we will
+        //potentially allocate massive inner buffers in the tile cache
+        //asynchronous entry builder that will never be used.
+        checkReadSize(new int[] { w, h });
 
         List<List<Integer>> keys = new ArrayList<List<Integer>>();
         List<Integer> key = null;
@@ -476,10 +483,7 @@ public class ZarrPixelBuffer implements PixelBuffer {
             // of channels can be unpredictable.
             tileCache.synchronous().invalidateAll();
         }
-        CompletableFuture<Map<List<Integer>, byte[]>> future =
-                tileCache.getAll(keys);
-        Map<List<Integer>, byte[]> values = future.join();
-        return toPixelData(values.get(key));
+        return toPixelData(tileCache.getAll(keys).join().get(key));
     }
 
     @Override

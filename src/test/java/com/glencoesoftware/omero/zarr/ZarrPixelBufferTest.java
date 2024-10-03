@@ -41,12 +41,11 @@ import org.junit.Test;
 
 import com.bc.zarr.ZarrArray;
 import com.bc.zarr.ZarrGroup;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.benmanes.caffeine.cache.Caffeine;
 
 import picocli.CommandLine;
 import com.glencoesoftware.bioformats2raw.Converter;
-import com.glencoesoftware.omero.zarr.ZarrPixelsService;
-import com.glencoesoftware.omero.zarr.ZarrPixelBuffer;
 
 import loci.formats.FormatTools;
 import loci.formats.in.FakeReader;
@@ -503,8 +502,39 @@ public class ZarrPixelBufferTest {
         }
     }
 
-    @Test
-    public void testTileExceedsMax() throws IOException, InvalidRangeException {
+    @Test(expected = IllegalArgumentException.class)
+    public void testTileIntegerOverflow()
+            throws IOException, InvalidRangeException {
+        int sizeT = 1;
+        int sizeC = 3;
+        int sizeZ = 1;
+        int sizeY = 1;
+        int sizeX = 1;
+        int resolutions = 1;
+        Pixels pixels = new Pixels(
+                null, null, sizeX, sizeY, sizeZ, sizeC, sizeT, "", null);
+        Path output = writeTestZarr(
+                sizeT, sizeC, sizeZ, sizeY, sizeX, "uint16",
+                resolutions);
+
+        // Hack the .zarray so we can appear as though we have more data than
+        // we actually have written above.
+        ObjectMapper mapper = new ObjectMapper();
+        HashMap<String, Object> zArray = mapper.readValue(
+                Files.readAllBytes(output.resolve("0/0/.zarray")),
+                HashMap.class);
+        List<Integer> shape = (List<Integer>) zArray.get("shape");
+        shape.set(3, 50000);
+        shape.set(4, 50000);
+        mapper.writeValue(output.resolve("0/0/.zarray").toFile(), zArray);
+        try (ZarrPixelBuffer zpbuf =
+                createPixelBuffer(pixels, output.resolve("0"), 32, 32)) {
+            zpbuf.getTile(0, 0, 0, 0, 0, 50000, 50000);
+        }
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testTileExceedsMinMax() throws IOException {
         int sizeT = 1;
         int sizeC = 3;
         int sizeZ = 1;
@@ -519,8 +549,9 @@ public class ZarrPixelBufferTest {
 
         try (ZarrPixelBuffer zpbuf =
                 createPixelBuffer(pixels, output.resolve("0"), 32, 32)) {
-            PixelData pixelData = zpbuf.getTile(0, 0, 0, 0, 0, 32, 33);
-            Assert.assertNull(pixelData);
+            Assert.assertNull(zpbuf.getTile(0, 0, 0, 0, 0, 32, 33));
+            // Throws exception
+            zpbuf.getTile(0, 0, 0, -1, 0, 1, 1);
         }
     }
 
