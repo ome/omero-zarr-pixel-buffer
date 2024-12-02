@@ -831,9 +831,8 @@ public class ZarrPixelBuffer implements PixelBuffer {
             // if no Z downsampling, this is just an identity map
             int fullResZ = fullResolutionArray.getShape()[2];
             int arrayZ = array.getShape()[2];
-            int zStep = fullResZ / arrayZ;
             for (int z=0; z<fullResZ; z++) {
-                zIndexMap.put(z, z * zStep);
+                zIndexMap.put(z, Math.round(z * arrayZ / fullResZ));
             }
         } catch (Exception e) {
             // FIXME: Throw the right exception
