@@ -42,7 +42,7 @@ OMERO Zarr Pixel Buffer looks for credentials in this order:
 
 1.  the credentials profiles file, typically located at ~/.aws/credentials` and shared
     by the AWS CLI
-2.  instance profile credentials for EC2 instances configuring with a policy
+2.  instance profile credentials for EC2 instances configured with a policy
     allowing to assume an IAM role
 
 ## Development
