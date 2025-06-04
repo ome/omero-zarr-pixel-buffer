@@ -38,6 +38,7 @@ import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
+import com.glencoesoftware.omero.zarr.ZarrPixelBuffer.Axes;
 
 import com.bc.zarr.ArrayParams;
 import com.bc.zarr.DimensionSeparator;
@@ -186,14 +187,16 @@ public class ZarrPixelBufferTest {
     }
 
     public Path writeTestZarr(
-            int sizeT,
-            int sizeC,
-            int sizeZ,
-            int sizeY,
-            int sizeX,
-            String pixelType,
-            int resolutions) throws IOException {
-        Path input = fake(
+        int sizeT,
+        int sizeC,
+        int sizeZ,
+        int sizeY,
+        int sizeX,
+        String pixelType,
+        int resolutions,
+        String order) throws IOException {
+
+            Path input = fake(
                 "sizeT", Integer.toString(sizeT),
                 "sizeC", Integer.toString(sizeC),
                 "sizeZ", Integer.toString(sizeZ),
@@ -202,7 +205,12 @@ public class ZarrPixelBufferTest {
                 "pixelType", pixelType,
                 "resolutions", Integer.toString(resolutions));
         Path output = tmpDir.getRoot().toPath().resolve("output.zarr");
-        assertBioFormats2Raw(input, output);
+        if (order != null) {
+            assertBioFormats2Raw(input, output, "--dimension-order", order);
+        } else {
+            assertBioFormats2Raw(input, output);
+        }
+        
         List<Object> msArray = new ArrayList<>();
         Map<String, Object> msData = new HashMap<>();
         Map<String, Object> msMetadata = new HashMap<>();
@@ -217,6 +225,18 @@ public class ZarrPixelBufferTest {
         attrs.put("multiscales", msArray);
         z.writeAttributes(attrs);
         return output;
+            
+        }
+    public Path writeTestZarr(
+            int sizeT,
+            int sizeC,
+            int sizeZ,
+            int sizeY,
+            int sizeX,
+            String pixelType,
+            int resolutions) throws IOException {
+        return writeTestZarr(sizeT, sizeC, sizeZ, sizeY, sizeX, pixelType,
+                resolutions, null);
     }
 
     public Path writeTestZarrWithAxes(int sizeT,
@@ -958,4 +978,43 @@ public class ZarrPixelBufferTest {
             }
         }
     }
+
+
+    @Test
+    public void testDefaultAxes()
+        throws IOException, InvalidRangeException {
+        // Check that if access are not in the file it defaults to TCZYX order
+
+        int sizeT = 1;
+        int sizeC = 2;
+        int sizeZ = 16;
+        int sizeY = 256;
+        int sizeX = 256;
+        int resolutions = 1;
+
+        Pixels pixels = new Pixels(
+                null, null, sizeX, sizeY, sizeZ, sizeC, sizeT, "", null);
+        Path output = writeTestZarr(
+                sizeT, sizeC, sizeZ, sizeY, sizeX, "uint8", resolutions);
+
+        try (ZarrPixelBuffer zpbuf =
+                createPixelBuffer(pixels, output.resolve("0"), sizeX, sizeY)) {
+                    Map<Axes, Integer> axes = zpbuf.getAxes();
+                    Assert.assertEquals(0, axes.get(Axes.T).intValue());
+                    Assert.assertEquals(1, axes.get(Axes.C).intValue());
+                    Assert.assertEquals(2, axes.get(Axes.Z).intValue());
+                    Assert.assertEquals(3, axes.get(Axes.Y).intValue());
+                    Assert.assertEquals(4, axes.get(Axes.X).intValue());
+                    Assert.assertEquals(sizeT, zpbuf.getSizeT());
+                    Assert.assertEquals(sizeC, zpbuf.getSizeC());
+                    Assert.assertEquals(sizeZ, zpbuf.getSizeZ());
+                    Assert.assertEquals(sizeY, zpbuf.getSizeY());
+                    Assert.assertEquals(sizeX, zpbuf.getSizeX());
+
+        } 
+            
+    }
+
+
+
 }
