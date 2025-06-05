@@ -95,7 +95,7 @@ public class ZarrPixelBuffer implements PixelBuffer {
     /** Array path vs. ZarrArray cache */
     private final AsyncLoadingCache<Path, ZarrArray> zarrArrayCache;
 
-    private enum Axes {
+    public enum Axes {
         X, Y, Z, C, T;
     }
 
