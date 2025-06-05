@@ -412,10 +412,6 @@ public class ZarrPixelBufferTest {
             int sizeY, String order) {
         // XXX: Is not data type agnostic, expects signed 32-bit integer pixels
         int bytesPerPixel = 4;
-        // int[] shape = new int[] {sizeC, sizeZ, sizeY, sizeX};
-        // int size = IntStream.of(new int[] {sizeZ, sizeY, sizeX, bytesPerPixel})
-        //         .reduce(1, Math::multiplyExact);
-        // Array array = asArray(timepoint, shape).slice(0, c);
         int[] shape = new int[4];
         String shapeorder = order.replace("T", "");
         shape[shapeorder.indexOf('C')] = sizeC;
@@ -440,10 +436,6 @@ public class ZarrPixelBufferTest {
             byte[] stack, int z, int sizeZ, int sizeX, int sizeY, String order) {
         // XXX: Is not data type agnostic, expects signed 32-bit integer pixels
         int bytesPerPixel = 4;
-        // int[] shape = new int[] {sizeZ, sizeY, sizeX};
-        // int size = IntStream.of(new int[] {sizeY, sizeX, bytesPerPixel})
-        //         .reduce(1, Math::multiplyExact);
-        // Array array = asArray(stack, shape).slice(0, z);
         String shapeorder = order.replace("T", "").replace("C", "");
         int[] shape = new int[3];
         shape[shapeorder.indexOf('Z')] = sizeZ;
