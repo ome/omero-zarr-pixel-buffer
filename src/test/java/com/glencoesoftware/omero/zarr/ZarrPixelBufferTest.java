@@ -40,8 +40,6 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import com.glencoesoftware.omero.zarr.ZarrPixelBuffer.Axes;
 
-import com.bc.zarr.ArrayParams;
-import com.bc.zarr.DimensionSeparator;
 import com.bc.zarr.ZarrArray;
 import com.bc.zarr.ZarrGroup;
 import com.fasterxml.jackson.databind.ObjectMapper;
