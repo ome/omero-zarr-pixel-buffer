@@ -339,10 +339,6 @@ public class ZarrPixelBuffer implements PixelBuffer {
             axes.put(Axes.Y, 3);
             axes.put(Axes.X, 4);
         }
-        System.out.println("Axes order: ");
-        for (Map.Entry<Axes, Integer> entry : axes.entrySet()) {
-            System.out.println(entry.getKey() + " = " + entry.getValue());
-        }
         return axes;
     }
 
@@ -686,12 +682,6 @@ public class ZarrPixelBuffer implements PixelBuffer {
     @Override
     public PixelData getTimepoint(Integer t)
             throws IOException, DimensionsOutOfBoundsException {
-        System.out.println("getSizeZ() = " + getSizeZ());
-        System.out.println("getSizeC() = " + getSizeC());
-        System.out.println("getSizeT() = " + getSizeT());
-        System.out.println("getSizeX() = " + getSizeX());
-        System.out.println("getSizeY() = " + getSizeY());
-        System.out.println("getTimepointSize() = " + getTimepointSize());
         int timepointSize =
                 RomioPixelBuffer.safeLongToInteger(getTimepointSize());
         byte[] buffer = new byte[timepointSize];
@@ -850,7 +840,6 @@ public class ZarrPixelBuffer implements PixelBuffer {
      * @return Z size of the current underlying Zarr array
      */
     private int getTrueSizeZ() {
-        System.out.println("getTrueSizeZ() shape = " + Arrays.toString(array.getShape()));
         return array.getShape()[axes.get(Axes.Z)];
     }
 
