@@ -208,8 +208,8 @@ public class ZarrPixelBuffer implements PixelBuffer {
     private void read(byte[] buffer, int[] shape, int[] offset)
             throws IOException {
         // Check planar read size (sizeX and sizeY only)
-        checkReadSize(Arrays.copyOfRange(shape, 3, 5));
-
+        checkReadSize(new int[] {shape[axes.get(Axes.X)], shape[axes.get(Axes.Y)]});
+        
         // if reading from a resolution downsampled in Z,
         // adjust the shape/offset for the Z coordinate only
         // this ensures that the correct Zs are read from the correct offsets
