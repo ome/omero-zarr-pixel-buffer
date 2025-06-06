@@ -976,7 +976,7 @@ public class ZarrPixelBuffer implements PixelBuffer {
     public Dimension getTileSize() {
         try {
             int[] chunks = getChunks()[resolutionLevel];
-            return new Dimension(chunks[axes.get(Axes.Y)], chunks[axes.get(Axes.X)]);
+            return new Dimension(chunks[axes.get(Axes.X)], chunks[axes.get(Axes.Y)]);
         } catch (Exception e) {
             // FIXME: Throw the right exception
             throw new RuntimeException(e);
