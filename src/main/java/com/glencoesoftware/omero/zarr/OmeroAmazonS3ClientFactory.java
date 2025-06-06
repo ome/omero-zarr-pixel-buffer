@@ -30,11 +30,16 @@ import com.amazonaws.auth.AWSStaticCredentialsProvider;
 import com.amazonaws.auth.AnonymousAWSCredentials;
 import com.amazonaws.auth.EC2ContainerCredentialsProviderWrapper;
 import com.amazonaws.auth.profile.ProfileCredentialsProvider;
+import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration;
+import com.amazonaws.regions.Regions;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.upplication.s3fs.AmazonS3ClientFactory;
 
 public class OmeroAmazonS3ClientFactory extends AmazonS3ClientFactory {
+
+
+    public static final String ENDPOINT = "https://s3.amazonaws.com";
 
     private static final org.slf4j.Logger log =
             LoggerFactory.getLogger(OmeroAmazonS3ClientFactory.class);
@@ -57,6 +62,7 @@ public class OmeroAmazonS3ClientFactory extends AmazonS3ClientFactory {
         }
         boolean anonymous = Boolean.parseBoolean(
                 (String) props.get("s3fs_anonymous"));
+        anonymous = true;
         if (anonymous) {
             log.debug("Using anonymous credentials");
             return new AWSStaticCredentialsProvider(
@@ -71,7 +77,12 @@ public class OmeroAmazonS3ClientFactory extends AmazonS3ClientFactory {
             );
         }
     }
-
+    
+    /**
+     * Retrieves the bucket name from a given URI.
+     * @param uri The URI to handle
+     * @return The bucket name
+     */
     private String getBucketFromUri(URI uri) {
         String path = uri.getPath();
         if (path.startsWith("/")) {
@@ -80,16 +91,47 @@ public class OmeroAmazonS3ClientFactory extends AmazonS3ClientFactory {
         return path.substring(0, path.indexOf("/"));
     }
 
+    /**
+     * Retrieves the region from a given URI.
+     * @param uri The URI to handle
+     * @return The region
+     */
     private String getRegionFromUri(URI uri) {
         String host = uri.getHost();
-        return host.split("\\.")[1];
+        if (host.contains("amazonaws.com")) {
+            String[] values = host.split("\\.");
+            if (values.length == 3) {
+                return Regions.DEFAULT_REGION.getName();
+            } else if (values.length > 3) {
+                return values[1];
+            }
+        }
+
+        return Regions.DEFAULT_REGION.getName();
+    }
+
+    /**
+     * Retrieves the endpoint from a given URI.
+     * @param uri The URI to handle
+     * @return The endpoint
+     */
+    private String getEndPointFromUri(URI uri) {
+        String host = uri.getHost();
+        if (host.contains("amazonaws.com")) {
+            return ENDPOINT;
+        }
+        // Check if is an endpoint other than s3.amazonaws.com
+        String[] values = host.split("\\.");
+        if (values.length > 1) {
+            return "https://" + host;
+        }
+        return ENDPOINT;
     }
 
     @Override
     public synchronized AmazonS3 getAmazonS3(URI uri, Properties props) {
         //Check if we have a S3 client for this bucket
         String bucket = getBucketFromUri(uri);
-        log.info(bucket);
         if (bucketClientMap.containsKey(bucket)) {
             log.info("Found bucket " + bucket);
             return bucketClientMap.get(bucket);
@@ -99,7 +141,7 @@ public class OmeroAmazonS3ClientFactory extends AmazonS3ClientFactory {
                             .withCredentials(getCredentialsProvider(props))
                             .withClientConfiguration(getClientConfiguration(props))
                             .withMetricsCollector(getRequestMetricsCollector(props))
-                            .withRegion(getRegionFromUri(uri))
+                            .withEndpointConfiguration(new EndpointConfiguration(getEndPointFromUri(uri), getRegionFromUri(uri)))
                             .build();
         bucketClientMap.put(bucket, client);
         return client;
