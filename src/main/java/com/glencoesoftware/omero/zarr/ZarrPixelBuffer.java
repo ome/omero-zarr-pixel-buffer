@@ -943,7 +943,7 @@ public class ZarrPixelBuffer implements PixelBuffer {
             throw new IllegalArgumentException(
                     "This Zarr file has no pixel data");
         }
-        if (axes.containsKey(Axes.Z)) {
+        
             if (zIndexMap == null) {
                 zIndexMap = new HashMap<Integer, Integer>();
             }
@@ -956,20 +956,22 @@ public class ZarrPixelBuffer implements PixelBuffer {
 
                 ZarrArray fullResolutionArray = zarrArrayCache.get(
                         root.resolve("0")).get();
-
-                // map each Z index in the full resolution array
-                // to a Z index in the subresolution array
-                // if no Z downsampling, this is just an identity map
-                int fullResZ = fullResolutionArray.getShape()[axes.get(Axes.Z)];
-                int arrayZ = array.getShape()[axes.get(Axes.Z)];
-                for (int z=0; z<fullResZ; z++) {
-                    zIndexMap.put(z, Math.round(z * arrayZ / fullResZ));
+                
+                if (axes.containsKey(Axes.Z)) {
+                    // map each Z index in the full resolution array
+                    // to a Z index in the subresolution array
+                    // if no Z downsampling, this is just an identity map
+                    int fullResZ = fullResolutionArray.getShape()[axes.get(Axes.Z)];
+                    int arrayZ = array.getShape()[axes.get(Axes.Z)];
+                    for (int z=0; z<fullResZ; z++) {
+                        zIndexMap.put(z, Math.round(z * arrayZ / fullResZ));
+                    }
                 }
             } catch (Exception e) {
                 // FIXME: Throw the right exception
                 throw new RuntimeException(e);
             }
-        }
+        
     }
 
     @Override
