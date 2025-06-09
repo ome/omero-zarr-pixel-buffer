@@ -36,6 +36,8 @@ import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.upplication.s3fs.AmazonS3ClientFactory;
 
+import Ice.SysLoggerI;
+
 public class OmeroAmazonS3ClientFactory extends AmazonS3ClientFactory {
 
 
@@ -117,15 +119,12 @@ public class OmeroAmazonS3ClientFactory extends AmazonS3ClientFactory {
      */
     private String getEndPointFromUri(URI uri) {
         String host = uri.getHost();
-        if (host.contains("amazonaws.com")) {
-            return ENDPOINT;
-        }
-        // Check if is an endpoint other than s3.amazonaws.com
+        // Check if is an endpoint is specified
         String[] values = host.split("\\.");
-        if (values.length > 1) {
-            return "https://" + host;
+        if (values.length == 1) {
+            throw new RuntimeException("Endpoint " + host + " not supported");
         }
-        return ENDPOINT;
+        return "https://" + host;
     }
 
     @Override
