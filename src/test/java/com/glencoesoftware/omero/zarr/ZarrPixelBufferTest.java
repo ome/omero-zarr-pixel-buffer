@@ -32,6 +32,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.OptionalInt;
 import java.util.stream.IntStream;
 
 import org.junit.Assert;
@@ -44,6 +45,8 @@ import com.bc.zarr.ZarrArray;
 import com.bc.zarr.ZarrGroup;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import com.glencoesoftware.TestZarr;
+import com.glencoesoftware.Utils;
 import com.glencoesoftware.bioformats2raw.Converter;
 
 import loci.formats.FormatTools;
@@ -903,7 +906,7 @@ public class ZarrPixelBufferTest {
         int sizeC = 2;
         int sizeZ = 16;
         int sizeY = 256;
-        int sizeX = 256;
+        int sizeX = 512;
         int resolutions = 1;
         String order = DimensionOrder.VALUE_XYCTZ;
         Pixels pixels = new Pixels(
@@ -935,7 +938,7 @@ public class ZarrPixelBufferTest {
         int sizeC = 2;
         int sizeZ = 16;
         int sizeY = 256;
-        int sizeX = 256;
+        int sizeX = 512;
         int resolutions = 1;
 
         Pixels pixels = new Pixels(
@@ -959,5 +962,86 @@ public class ZarrPixelBufferTest {
         }
     }
 
+    @Test
+    public void test_XYCT() throws IOException, InvalidRangeException {
+        testDimensions(512, 1024, 0, 3, 10);
+    }
 
+    @Test
+    public void test_XYCZ() throws IOException, InvalidRangeException {
+        testDimensions(512, 1024, 10, 3, 0);
+    }
+
+    @Test
+    public void test_XYC() throws IOException, InvalidRangeException {
+        testDimensions(512, 1024, 0, 3, 0);
+    }
+
+    @Test
+    public void test_XY() throws IOException, InvalidRangeException {
+        testDimensions(512, 1024, 0, 0, 0);
+    }
+
+    private void testDimensions(int sizeX, int sizeY, int sizeZ, int sizeC, int sizeT) throws IOException, InvalidRangeException {
+        int textX = 10;
+        int textY = 10;
+        
+        String order = DimensionOrder.VALUE_XYCTZ;
+        if (sizeT == 0) {
+            order.replace("T", "");
+        }
+        if (sizeZ == 0) {
+            order.replace("Z", "");
+        }
+        if (sizeC == 0) {
+            order.replace("C", "");
+        }
+        
+        Path testZarrPath = tmpDir.getRoot().toPath().resolve("test.zarr");
+        TestZarr testZarr = new TestZarr()
+            .setPath(testZarrPath)
+            .setOverwrite(true)
+            .setSizeX(sizeX)
+            .setSizeY(sizeY)
+            .setSizeZ(sizeZ)
+            .setSizeT(sizeT)
+            .setSizeC(sizeC)
+            .setOrder(order)
+            .setTextX(textX)
+            .setTextY(textY)
+            .init()
+            .createImage()
+            .createMetadata();
+
+        int pixZ = sizeZ > 0 ? sizeZ : 1;
+        int pixC = sizeC > 0 ? sizeC : 1;
+        int pixT = sizeT > 0 ? sizeT : 1;
+        
+        Pixels pixels = new Pixels(
+            null, new PixelsType(PixelsType.VALUE_INT32), 
+            sizeX, sizeY, pixZ, pixC, pixT, "", new DimensionOrder(DimensionOrder.VALUE_XYCTZ));
+        
+        int expectedTests = pixC * pixT * pixZ;
+        int testCount = 0;
+        try (ZarrPixelBuffer zpbuf = createPixelBuffer(pixels, testZarrPath.resolve("0"), sizeX, sizeY)) {
+            for (int t = 0; t <= sizeT; t++) {
+                if (t == sizeT && sizeT > 0)
+                    break;
+                for (int z = 0; z <= sizeZ; z++) {
+                    if (z == sizeZ && sizeZ > 0)
+                        break;
+                    for (int c = 0; c <= sizeC; c++) {
+                        if (c == sizeC && sizeC > 0)
+                            break;
+                        String txt = testZarr.getText().replace("<C>", String.valueOf(c)).replace("<T>", String.valueOf(t)).replace("<Z>", String.valueOf(z));
+                        byte[] expected = Utils.generateGreyscaleImageWithText(sizeX, sizeY, txt, OptionalInt.of(textX), OptionalInt.of(textY));
+                        byte[] actual = zpbuf.getPlane(z, c, t).getData().array();
+                        Assert.assertArrayEquals(expected, actual);
+                        testCount++;
+                    }
+                }
+            }
+        }   
+        Assert.assertEquals(expectedTests, testCount);
+    }
 }
