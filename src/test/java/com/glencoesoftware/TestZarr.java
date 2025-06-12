@@ -30,9 +30,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.OptionalInt;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.bc.zarr.ArrayParams;
 import com.bc.zarr.DataType;
 import com.bc.zarr.DimensionSeparator;
@@ -45,8 +42,6 @@ import ucar.ma2.InvalidRangeException;
  * TestZarr is a utility class for creating and populating a Zarr with different number and order of dimensions.
  */
 public class TestZarr {
-
-    private static final Logger logger = LoggerFactory.getLogger(TestZarr.class);
 
     private int sizeX = 512;
     private int sizeY = 256;
@@ -130,8 +125,7 @@ public class TestZarr {
         if (sizeT == 0) {
             this.order = order.replace("T", "");
         }
-        logger.info("Initializing Zarr array with dimensions: x={} y={} z={} t={} c={} order={}", sizeX, sizeY, sizeZ, sizeT, sizeC, order);
-        int[] shape = new int[order.length()];
+       int[] shape = new int[order.length()];
         if (order.contains("C"))    
             shape[order.indexOf("C")] = sizeC;
         if (order.contains("T"))
@@ -143,13 +137,11 @@ public class TestZarr {
 
         if (Files.exists(path)) {
             if (overwrite) {
-                logger.info("Overwriting existing path: {}", path);
                 Files.walk(path)
       		    .sorted(Comparator.reverseOrder())
       		    .map(Path::toFile)
       		    .forEach(File::delete);
             } else {
-                logger.error("Path already exists and overwrite is false: {}", path);
                 throw new IOException("Path already exists");
             }
         }
@@ -159,14 +151,12 @@ public class TestZarr {
         
         // Create parent directories if they don't exist
         Files.createDirectories(img_path.getParent());
-        logger.debug("Created directories: {}", img_path.getParent());
         
         array = ZarrArray.create(img_path, new ArrayParams()
         .shape(shape)
         .dataType(dataType)
         .dimensionSeparator(DimensionSeparator.SLASH)
         );
-        logger.info("Created Zarr array at: {}", img_path);
         return this;
     }
 
@@ -177,7 +167,6 @@ public class TestZarr {
      * @throws InvalidRangeException
      */
     public TestZarr createImage() throws IOException, InvalidRangeException {
-        logger.info("Creating image data");
         for (int i = 0; i <= sizeC; i++) {
             if (i == sizeC && sizeC > 0)
                 break;
@@ -187,7 +176,6 @@ public class TestZarr {
                 for (int k = 0; k <= sizeZ; k++) {
                     if (j == sizeZ && sizeZ > 0)
                         break;
-                    logger.debug("Generating {}x{}px plane for C={}, T={}, Z={}", sizeX, sizeY, i, j, k);
                     String txt = text.replace("<C>", String.valueOf(i)).replace("<T>", String.valueOf(j)).replace("<Z>", String.valueOf(k));
                     byte[] plane = Utils.generateGreyscaleImageWithText(sizeX, sizeY, txt, textX, textY);
                     int[] sh = new int[order.length()];
@@ -212,7 +200,6 @@ public class TestZarr {
                 }
             }
         }
-        logger.info("Finished creating image data");
         return this;
     }
 
@@ -222,7 +209,6 @@ public class TestZarr {
      * @throws IOException
      */
     public TestZarr createMetadata() throws IOException {
-        logger.info("Saving image metadata");
         List<Map<String, String>> axes = new ArrayList<>();
         for (int i = 0; i < order.length(); i++) {
             Map<String, String> axisObj = new HashMap<>();
@@ -262,14 +248,12 @@ public class TestZarr {
         
         // Create the series directory if it doesn't exist
         Files.createDirectories(series_path);
-        logger.debug("Created series directory: {}", series_path);
         
         // Create a new ZarrGroup instead of trying to open an existing one
         ZarrGroup z = ZarrGroup.create(series_path);
         Map<String,Object> attrs = new HashMap<String, Object>();
         attrs.put("multiscales", msArray);
         z.writeAttributes(attrs);
-        logger.info("Saved image metadata to: {}", series_path);
 
         return this;
     }
