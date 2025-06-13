@@ -45,8 +45,6 @@ import com.bc.zarr.ZarrArray;
 import com.bc.zarr.ZarrGroup;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.benmanes.caffeine.cache.Caffeine;
-import com.glencoesoftware.TestZarr;
-import com.glencoesoftware.Utils;
 import com.glencoesoftware.bioformats2raw.Converter;
 
 import loci.formats.FormatTools;
