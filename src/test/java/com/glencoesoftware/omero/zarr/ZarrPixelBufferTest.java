@@ -984,7 +984,7 @@ public class ZarrPixelBufferTest {
         int textX = 10;
         int textY = 10;
         
-        String order = DimensionOrder.VALUE_XYCTZ;
+        String order = DimensionOrder.VALUE_XYZCT;
         if (sizeT == 0) {
             order.replace("T", "");
         }
@@ -1004,7 +1004,7 @@ public class ZarrPixelBufferTest {
             .setSizeZ(sizeZ)
             .setSizeT(sizeT)
             .setSizeC(sizeC)
-            .setOrder(order)
+            .setOrder(new StringBuilder(order).reverse().toString())
             .setTextX(textX)
             .setTextY(textY)
             .init()
@@ -1017,7 +1017,7 @@ public class ZarrPixelBufferTest {
         
         Pixels pixels = new Pixels(
             null, new PixelsType(PixelsType.VALUE_INT32), 
-            sizeX, sizeY, pixZ, pixC, pixT, "", new DimensionOrder(DimensionOrder.VALUE_XYCTZ));
+            sizeX, sizeY, pixZ, pixC, pixT, "", new DimensionOrder(order));
         
         int expectedTests = pixC * pixT * pixZ;
         int testCount = 0;
