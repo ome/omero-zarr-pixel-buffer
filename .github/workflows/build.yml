@@ -23,6 +23,8 @@ jobs:
         with:
           java-version: ${{ matrix.java }}
           distribution: 'zulu'
+      - name: Install dependency
+        run: sudo apt-get install libblosc1
       - name: Run commands
         run: |
           ./gradlew ${{ env.gradle_commands }}
