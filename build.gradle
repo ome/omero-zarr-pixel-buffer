@@ -31,7 +31,7 @@ repositories {
 }
 
 dependencies {
-    api 'org.openmicroscopy:omero-blitz:5.7.3'
+    api 'org.openmicroscopy:omero-blitz:5.8.3'
     implementation 'com.github.ben-manes.caffeine:caffeine:3.1.8'
     implementation 'dev.zarr:jzarr:0.4.2'
     implementation 'org.lasersonlab:s3fs:2.2.3'
