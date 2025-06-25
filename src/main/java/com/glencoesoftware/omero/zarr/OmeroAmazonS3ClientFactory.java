@@ -36,8 +36,6 @@ import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.upplication.s3fs.AmazonS3ClientFactory;
 
-import Ice.SysLoggerI;
-
 public class OmeroAmazonS3ClientFactory extends AmazonS3ClientFactory {
 
 
