@@ -62,7 +62,6 @@ public class OmeroAmazonS3ClientFactory extends AmazonS3ClientFactory {
         }
         boolean anonymous = Boolean.parseBoolean(
                 (String) props.get("s3fs_anonymous"));
-        anonymous = true;
         if (anonymous) {
             log.debug("Using anonymous credentials");
             return new AWSStaticCredentialsProvider(
