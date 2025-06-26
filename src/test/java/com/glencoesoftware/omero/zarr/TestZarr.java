@@ -29,6 +29,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.OptionalInt;
+import java.util.Random;
 
 import com.bc.zarr.ArrayParams;
 import com.bc.zarr.DataType;
@@ -37,6 +38,13 @@ import com.bc.zarr.ZarrArray;
 import com.bc.zarr.ZarrGroup;
 
 import ucar.ma2.InvalidRangeException;
+
+import java.awt.Color;
+import java.awt.Font;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
+import java.awt.image.BufferedImage;
+import java.awt.image.DataBufferByte;
 
 /**
  * TestZarr is a utility class for creating and populating a Zarr with different number and order of dimensions.
@@ -167,17 +175,16 @@ public class TestZarr {
      * @throws InvalidRangeException
      */
     public TestZarr createImage() throws IOException, InvalidRangeException {
-        for (int i = 0; i <= sizeC; i++) {
-            if (i == sizeC && sizeC > 0)
+        for (int c = 0; c <= sizeC; c++) {
+            if (c == sizeC && sizeC > 0)
                 break;
-            for (int j = 0; j <= sizeT; j++) {
-                if (j == sizeT && sizeT > 0)
+            for (int t = 0; t <= sizeT; t++) {
+                if (t == sizeT && sizeT > 0)
                     break;
-                for (int k = 0; k <= sizeZ; k++) {
-                    if (j == sizeZ && sizeZ > 0)
+                for (int z = 0; z <= sizeZ; z++) {
+                    if (z == sizeZ && sizeZ > 0)
                         break;
-                    String txt = text.replace("<C>", String.valueOf(i)).replace("<T>", String.valueOf(j)).replace("<Z>", String.valueOf(k));
-                    byte[] plane = Utils.generateGreyscaleImageWithText(sizeX, sizeY, txt, textX, textY);
+                    byte[] plane = generateGreyscaleImageWithText(c, z, t);
                     int[] sh = new int[order.length()];
                     int[] off = new int[order.length()];
                     if (order.contains("C"))
@@ -189,11 +196,11 @@ public class TestZarr {
                     sh[order.indexOf("Y")] = sizeY;
                     sh[order.indexOf("X")] = sizeX;
                     if (order.contains("C"))
-                        off[order.indexOf("C")] = i;
+                        off[order.indexOf("C")] = c;
                     if (order.contains("T"))
-                        off[order.indexOf("T")] = j;
+                        off[order.indexOf("T")] = t;
                     if (order.contains("Z"))
-                        off[order.indexOf("Z")] = k;
+                        off[order.indexOf("Z")] = z;
                     off[order.indexOf("Y")] = 0;
                     off[order.indexOf("X")] = 0;
                     array.write(plane, sh, off);
@@ -256,6 +263,48 @@ public class TestZarr {
         z.writeAttributes(attrs);
 
         return this;
+    }
+
+    /**
+     * Generates a grayscale image with text.
+     * The background is black (0) and the text is white (255).
+     * @return byte array containing the grayscale image data
+     */
+    public byte[] generateGreyscaleImageWithText(int c, int z, int t) {
+        // Create buffered image
+        BufferedImage image = new BufferedImage(sizeX, sizeY, BufferedImage.TYPE_BYTE_GRAY);
+        Graphics2D g2d = image.createGraphics();
+
+        // Set rendering hints for better text quality
+        g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_OFF);
+        g2d.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_OFF);
+
+        // Fill background with black
+        g2d.setColor(Color.BLACK);
+        g2d.fillRect(0, 0, sizeX, sizeY);
+
+        // Set up text properties
+        g2d.setColor(Color.WHITE);
+        int fontSize = Math.min(sizeX, sizeY) / 20; // Scale font size based on image dimensions
+        g2d.setFont(new Font("Arial", Font.BOLD, fontSize));
+
+        String planeText = text.replace("<C>", String.valueOf(c)).replace("<T>", String.valueOf(t)).replace("<Z>", String.valueOf(z));
+        // Get text dimensions
+        int textWidth = g2d.getFontMetrics().stringWidth(planeText);
+        int textHeight = g2d.getFontMetrics().getHeight();
+
+        // Generate random position for text, ensuring it fits within the image
+        Random random = new Random();
+        int x = textX.isPresent() ? textX.getAsInt() : random.nextInt(sizeX - textWidth);
+        int y = textY.isPresent() ? textY.getAsInt() : random.nextInt(sizeY - textHeight) + g2d.getFontMetrics().getAscent();
+
+        // Draw the text
+        g2d.drawString(planeText, x, y);
+        g2d.dispose();
+
+        // Get the underlying byte array
+        byte[] imageData = ((DataBufferByte) image.getRaster().getDataBuffer()).getData();
+        return imageData;
     }
 
     public int getSizeX() {
