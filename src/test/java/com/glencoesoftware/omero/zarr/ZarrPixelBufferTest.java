@@ -1004,7 +1004,7 @@ public class ZarrPixelBufferTest {
         int textX = 10;
         int textY = 10;
         
-        String order = "TCZYX";
+        String order = DimensionOrder.VALUE_XYZCT;
         if (sizeT == 0) {
             order.replace("T", "");
         }
