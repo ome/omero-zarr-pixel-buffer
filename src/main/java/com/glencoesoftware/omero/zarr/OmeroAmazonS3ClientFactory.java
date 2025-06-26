@@ -38,9 +38,6 @@ import com.upplication.s3fs.AmazonS3ClientFactory;
 
 public class OmeroAmazonS3ClientFactory extends AmazonS3ClientFactory {
 
-
-    public static final String ENDPOINT = "https://s3.amazonaws.com";
-
     private static final org.slf4j.Logger log =
             LoggerFactory.getLogger(OmeroAmazonS3ClientFactory.class);
 
