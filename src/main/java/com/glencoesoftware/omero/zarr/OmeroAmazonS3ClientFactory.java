@@ -106,14 +106,8 @@ public class OmeroAmazonS3ClientFactory extends AmazonS3ClientFactory {
      * @param uri The URI to handle
      * @return The endpoint
      */
-    private String getEndPointFromUri(URI uri) {
-        String host = uri.getHost();
-        // Check if is an endpoint is specified
-        String[] values = host.split("\\.");
-        if (values.length == 1) {
-            throw new RuntimeException("Endpoint " + host + " not supported");
-        }
-        return "https://" + host;
+    public String getEndPointFromUri(URI uri) {
+        return "https://" + uri.getHost();
     }
 
     @Override
