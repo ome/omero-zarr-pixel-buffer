@@ -34,6 +34,7 @@ import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration;
 import com.amazonaws.regions.Regions;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
+import com.amazonaws.util.AwsHostNameUtils;
 import com.upplication.s3fs.AmazonS3ClientFactory;
 
 public class OmeroAmazonS3ClientFactory extends AmazonS3ClientFactory {
@@ -93,16 +94,10 @@ public class OmeroAmazonS3ClientFactory extends AmazonS3ClientFactory {
      * @return The region
      */
     private String getRegionFromUri(URI uri) {
-        String host = uri.getHost();
-        if (host.contains("amazonaws.com")) {
-            String[] values = host.split("\\.");
-            if (values.length == 3) {
-                return Regions.DEFAULT_REGION.getName();
-            } else if (values.length > 3) {
-                return values[1];
-            }
+        String region = AwsHostNameUtils.parseRegion(uri.getHost(), null);
+        if (region != null) {
+            return region;
         }
-
         return Regions.DEFAULT_REGION.getName();
     }
 
