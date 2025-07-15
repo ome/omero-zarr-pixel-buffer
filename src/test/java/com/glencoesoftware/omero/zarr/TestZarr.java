@@ -56,7 +56,7 @@ public class TestZarr {
     private int sizeZ = 5;
     private int sizeT = 10;
     private int sizeC = 3;
-    private String order = "TCZYX";
+    private String order = "TCZYX"; // Note: Reverse for ome.model.enums.DimensionOrder
     private Path path = Path.of("./test.zarr");
     private DataType dataType = DataType.u1;
     private boolean overwrite = false;
@@ -356,6 +356,13 @@ public class TestZarr {
         return order;
     }
 
+    /**
+     * Set the order of the dimensions.
+     * Note: Reverse of ome.model.enums.DimensionOrder,
+     * e.g. DimensionOrder.XYZCT -> use "TCZYX"
+     * @param order
+     * @return
+     */
     public TestZarr setOrder(String order) {
         this.order = order;
         return this;
