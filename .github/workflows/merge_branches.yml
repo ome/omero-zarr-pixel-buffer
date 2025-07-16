@@ -3,7 +3,6 @@ name: Merge Feature Branches
 on:
   # Manual trigger
   workflow_dispatch:
-  push:
   
   # Run on a schedule (e.g., every day at midnight UTC)
   schedule:
