@@ -37,19 +37,6 @@ jobs:
         run: |
           git fetch --all
           
-      - name: Create or reset merged branch
-        run: |
-          # Check if merged branch exists remotely
-          if git ls-remote --heads origin ${{ steps.vars.outputs.merged_branch }} | grep -q ${{ steps.vars.outputs.merged_branch }}; then
-            # If it exists, fetch and reset it
-            git checkout ${{ steps.vars.outputs.merged_branch }}
-            git reset --hard origin/${{ steps.vars.outputs.base_branch }}
-          else
-            # If it doesn't exist, create it based on master
-            git checkout ${{ steps.vars.outputs.base_branch }}
-            git checkout -b ${{ steps.vars.outputs.merged_branch }}
-          fi
-      
       - name: Get all branches except master
         id: branches
         run: |
@@ -117,11 +104,6 @@ jobs:
           echo "==== Merge result ===="
           git log --oneline -n 10
       
-      - name: Push merged branch
-        run: |
-          echo "Pushing ${{ steps.vars.outputs.merged_branch }} branch..."
-          git push -f origin ${{ steps.vars.outputs.merged_branch }}
-      
       - name: Summary
         id: summary
         run: |
@@ -140,9 +122,8 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           commit-message: "Merge all feature branches into ${{ steps.vars.outputs.base_branch }}"
-          branch: ${{ steps.vars.outputs.merged_branch }}
           base: ${{ steps.vars.outputs.base_branch }}
-          delete-branch: false
+          delete-branch: true
           title: "Merge all feature branches into ${{ steps.vars.outputs.base_branch }}"
           body: |
             ## Automated Branch Merge
