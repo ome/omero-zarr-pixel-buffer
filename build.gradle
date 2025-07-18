@@ -2,6 +2,7 @@ plugins {
     id 'java-library'
     id 'eclipse'
     id 'maven-publish'
+    id 'com.github.johnrengelman.shadow' version '8.1.1'
 }
 
 group = 'com.glencoesoftware.omero'
@@ -87,3 +88,25 @@ jar {
         )
     }
 }
+
+shadowJar {
+    archiveClassifier = 'with-dependencies'
+    zip64 true
+    dependencies {
+        exclude(dependency('org.openmicroscopy:omero-blitz'))
+    }
+    manifest {
+        attributes(
+            "Created-By": "Gradle ${gradle.gradleVersion}",
+            "Build-Jdk": "${System.properties['java.version']} (${System.properties['java.vendor']} ${System.properties['java.vm.version']})",
+            "Built-By": System.properties['user.name'],
+            "Built-On": new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ").format(new Date()),
+            "Implementation-Build": "git rev-parse --verify HEAD".execute().getText().trim(),
+            "Implementation-Title": "OMERO Zarr Pixel Buffer",
+            "Implementation-Version": archiveVersion,
+            "Implementation-Vendor": "Glencoe Software Inc.",
+        )
+    }
+}
+
+build.dependsOn shadowJar
