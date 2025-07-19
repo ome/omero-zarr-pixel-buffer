@@ -95,6 +95,14 @@ public class ZarrPixelBuffer implements PixelBuffer {
     /** Array path vs. ZarrArray cache */
     private final AsyncLoadingCache<Path, ZarrArray> zarrArrayCache;
 
+    /** Supported axes, X and Y are essential */
+    public enum Axis {
+        X, Y, Z, C, T;
+    }
+
+    /** Maps axes to their corresponding indexes */
+    private Map<Axis, Integer> axesOrder;
+
     /**
      * Default constructor
      * @param pixels Pixels metadata for the pixel buffer
@@ -122,12 +130,14 @@ public class ZarrPixelBuffer implements PixelBuffer {
         if (!rootGroupAttributes.containsKey("multiscales")) {
             throw new IllegalArgumentException("Missing multiscales metadata!");
         }
+        this.axesOrder = getAxesOrder();
         this.resolutionLevels = this.getResolutionLevels();
         setResolutionLevel(this.resolutionLevels - 1);
         if (this.resolutionLevel < 0) {
             throw new IllegalArgumentException(
                     "This Zarr file has no pixel data");
         }
+
         this.maxPlaneWidth = maxPlaneWidth;
         this.maxPlaneHeight = maxPlaneHeight;
 
@@ -196,25 +206,30 @@ public class ZarrPixelBuffer implements PixelBuffer {
     private void read(byte[] buffer, int[] shape, int[] offset)
             throws IOException {
         // Check planar read size (sizeX and sizeY only)
-        checkReadSize(Arrays.copyOfRange(shape, 3, 5));
-
+        checkReadSize(new int[] {shape[axesOrder.get(Axis.X)], shape[axesOrder.get(Axis.Y)]});
+        
         // if reading from a resolution downsampled in Z,
         // adjust the shape/offset for the Z coordinate only
         // this ensures that the correct Zs are read from the correct offsets
         // since the requested shape/offset may not match the underlying array
         int planes = 1;
-        int originalZIndex = offset[2];
+        int originalZIndex = 1;
+        if (axesOrder.containsKey(Axis.Z)) {
+            originalZIndex = offset[axesOrder.get(Axis.Z)];
+        }
         if (getSizeZ() != getTrueSizeZ()) {
-          offset[2] = zIndexMap.get(originalZIndex);
-          planes = shape[2];
-          shape[2] = 1;
+            offset[axesOrder.get(Axis.Z)] = zIndexMap.get(originalZIndex);
+            planes = shape[axesOrder.get(Axis.Z)];
+            shape[axesOrder.get(Axis.Z)] = 1;
         }
 
         try {
             ByteBuffer asByteBuffer = ByteBuffer.wrap(buffer);
             DataType dataType = array.getDataType();
             for (int z=0; z<planes; z++) {
-                offset[2] = zIndexMap.get(originalZIndex + z);
+                if (axesOrder.containsKey(Axis.Z)) {
+                    offset[axesOrder.get(Axis.Z)] = zIndexMap.get(originalZIndex + z);
+                }
                 switch (dataType) {
                     case u1:
                     case i1:
@@ -296,7 +311,7 @@ public class ZarrPixelBuffer implements PixelBuffer {
     }
 
     /**
-     * Retrieves the datasets metadat of the first multiscale from the root
+     * Retrieves the datasets metadata of the first multiscale from the root
      * group attributes.
      * @return See above.
      * @see #getRootGroupAttributes()
@@ -305,6 +320,37 @@ public class ZarrPixelBuffer implements PixelBuffer {
     public List<Map<String, String>> getDatasets() {
         return (List<Map<String, String>>)
                 getMultiscalesMetadata().get(0).get("datasets");
+    }
+
+    /**
+     * Retrieves the axes metadata of the first multiscale
+     * @return See above.
+     */
+    public Map<Axis, Integer> getAxesOrder() {
+        HashMap<Axis, Integer> order = new HashMap<>();
+        List<Map<String, Object>> axesData = (List<Map<String, Object>>) getMultiscalesMetadata().get(0).get("axes");
+        if (axesData == null) {
+            log.warn("No axes metadata found, defaulting to standard axes TCZYX");
+            order.put(Axis.T, 0);
+            order.put(Axis.C, 1);
+            order.put(Axis.Z, 2);
+            order.put(Axis.Y, 3);
+            order.put(Axis.X, 4);
+        } else {
+            for (int i=0; i<axesData.size(); i++) {
+                Map<String, Object> axis = axesData.get(i);
+                String name = axis.get("name").toString().toUpperCase();
+                try {
+                    order.put(Axis.valueOf(name), i);
+                } catch (IllegalArgumentException e) {
+                    throw new IllegalArgumentException("Invalid axis name (only T,C,Z,Y,X are supported): " + name);
+                }
+            }
+        }
+        if (!order.containsKey(Axis.X) || !order.containsKey(Axis.Y)) {
+            throw new IllegalArgumentException("Missing X or Y axis!");
+        }
+        return order;
     }
 
     /**
@@ -517,8 +563,33 @@ public class ZarrPixelBuffer implements PixelBuffer {
             checkBounds(x, y, z, c, t);
             //Check check bottom-right of tile in bounds
             checkBounds(x + w - 1, y + h - 1, z, c, t);
-            int[] shape = new int[] { 1, 1, 1, h, w };
-            int[] offset = new int[] { t, c, z, y, x };
+
+            int[] shape = new int[axesOrder.size()];
+            if (axesOrder.containsKey(Axis.T)) {
+                shape[axesOrder.get(Axis.T)] = 1;
+            }
+            if (axesOrder.containsKey(Axis.C)) {
+                shape[axesOrder.get(Axis.C)] = 1;
+            }
+            if (axesOrder.containsKey(Axis.Z)) {
+                shape[axesOrder.get(Axis.Z)] = 1;
+            }
+            shape[axesOrder.get(Axis.Y)] = h;
+            shape[axesOrder.get(Axis.X)] = w;
+
+            int[] offset = new int[axesOrder.size()];
+            if (axesOrder.containsKey(Axis.T)) {
+                offset[axesOrder.get(Axis.T)] = t;
+            }
+            if (axesOrder.containsKey(Axis.C)) {
+                offset[axesOrder.get(Axis.C)] = c;
+            }
+            if (axesOrder.containsKey(Axis.Z)) {
+                offset[axesOrder.get(Axis.Z)] = z;
+            }
+            offset[axesOrder.get(Axis.Y)] = y;
+            offset[axesOrder.get(Axis.X)] = x;
+
             read(buffer, shape, offset);
             return buffer;
         } catch (Exception e) {
@@ -618,8 +689,33 @@ public class ZarrPixelBuffer implements PixelBuffer {
         checkBounds(x, y, z, c, t);
         //Check check bottom-right of tile in bounds
         checkBounds(x + w - 1, y + h - 1, z, c, t);
-        int[] shape = new int[] { 1, 1, getSizeZ(), h, w };
-        int[] offset = new int[] { t, c, z, y, x };
+
+        int[] shape = new int[axesOrder.size()];
+        if (axesOrder.containsKey(Axis.T)) {
+            shape[axesOrder.get(Axis.T)] = 1;
+        }
+        if (axesOrder.containsKey(Axis.C)) {
+            shape[axesOrder.get(Axis.C)] = 1;
+        }
+        if (axesOrder.containsKey(Axis.Z)) {
+            shape[axesOrder.get(Axis.Z)] = getSizeZ();
+        }
+        shape[axesOrder.get(Axis.Y)] = h;
+        shape[axesOrder.get(Axis.X)] = w;
+
+        int[] offset = new int[axesOrder.size()];
+        if (axesOrder.containsKey(Axis.T)) {
+            offset[axesOrder.get(Axis.T)] = t;
+        }
+        if (axesOrder.containsKey(Axis.C)) {
+            offset[axesOrder.get(Axis.C)] = c;
+        }
+        if (axesOrder.containsKey(Axis.Z)) {
+            offset[axesOrder.get(Axis.Z)] = z;
+        }
+        offset[axesOrder.get(Axis.Y)] = y;
+        offset[axesOrder.get(Axis.X)] = x;
+
         read(buffer, shape, offset);
         return buffer;
     }
@@ -647,8 +743,33 @@ public class ZarrPixelBuffer implements PixelBuffer {
         checkBounds(x, y, z, c, t);
         //Check check bottom-right of tile in bounds
         checkBounds(x + w - 1, y + h - 1, z, c, t);
-        int[] shape = new int[] { 1, getSizeC(), getSizeZ(), h, w };
-        int[] offset = new int[] { t, c, z, y, x };
+
+        int[] shape = new int[axesOrder.size()];
+        if (axesOrder.containsKey(Axis.T)) {
+            shape[axesOrder.get(Axis.T)] = 1;
+        }
+        if (axesOrder.containsKey(Axis.C)) {
+            shape[axesOrder.get(Axis.C)] = getSizeC();
+        }
+        if (axesOrder.containsKey(Axis.Z)) {
+            shape[axesOrder.get(Axis.Z)] = getSizeZ();
+        }
+        shape[axesOrder.get(Axis.Y)] = h;
+        shape[axesOrder.get(Axis.X)] = w;
+
+        int[] offset = new int[axesOrder.size()];
+        if (axesOrder.containsKey(Axis.T)) {
+            offset[axesOrder.get(Axis.T)] = t;
+        }
+        if (axesOrder.containsKey(Axis.C)) {
+            offset[axesOrder.get(Axis.C)] = c;
+        }
+        if (axesOrder.containsKey(Axis.Z)) {
+            offset[axesOrder.get(Axis.Z)] = z;
+        }
+        offset[axesOrder.get(Axis.Y)] = y;
+        offset[axesOrder.get(Axis.X)] = x;
+
         read(buffer, shape, offset);
         return buffer;
     }
@@ -757,35 +878,47 @@ public class ZarrPixelBuffer implements PixelBuffer {
 
     @Override
     public int getSizeX() {
-        return array.getShape()[4];
+        return array.getShape()[axesOrder.get(Axis.X)];
     }
 
     @Override
     public int getSizeY() {
-        return array.getShape()[3];
+        return array.getShape()[axesOrder.get(Axis.Y)];
     }
 
     @Override
     public int getSizeZ() {
-        // this is expected to be the Z size of the full resolution array
-        return zIndexMap.size();
+        if (axesOrder.containsKey(Axis.Z)) {
+            // this is expected to be the Z size of the full resolution array
+            return zIndexMap.size();
+        }
+        return 1;
     }
 
     /**
      * @return Z size of the current underlying Zarr array
      */
     private int getTrueSizeZ() {
-        return array.getShape()[2];
+        if (axesOrder.containsKey(Axis.Z)) {
+            return array.getShape()[axesOrder.get(Axis.Z)];
+        }
+        return 1;
     }
 
     @Override
     public int getSizeC() {
-        return array.getShape()[1];
+        if (axesOrder.containsKey(Axis.C)) {
+            return array.getShape()[axesOrder.get(Axis.C)];
+        }
+        return 1;
     }
 
     @Override
     public int getSizeT() {
-        return array.getShape()[0];
+        if (axesOrder.containsKey(Axis.T)) {
+            return array.getShape()[axesOrder.get(Axis.T)];
+        }
+        return 1;
     }
 
     @Override
@@ -813,6 +946,7 @@ public class ZarrPixelBuffer implements PixelBuffer {
             throw new IllegalArgumentException(
                     "This Zarr file has no pixel data");
         }
+        
         if (zIndexMap == null) {
             zIndexMap = new HashMap<Integer, Integer>();
         }
@@ -825,26 +959,29 @@ public class ZarrPixelBuffer implements PixelBuffer {
 
             ZarrArray fullResolutionArray = zarrArrayCache.get(
                     root.resolve("0")).get();
-
-            // map each Z index in the full resolution array
-            // to a Z index in the subresolution array
-            // if no Z downsampling, this is just an identity map
-            int fullResZ = fullResolutionArray.getShape()[2];
-            int arrayZ = array.getShape()[2];
-            for (int z=0; z<fullResZ; z++) {
-                zIndexMap.put(z, Math.round(z * arrayZ / fullResZ));
+            
+            if (axesOrder.containsKey(Axis.Z)) {
+                // map each Z index in the full resolution array
+                // to a Z index in the subresolution array
+                // if no Z downsampling, this is just an identity map
+                int fullResZ = fullResolutionArray.getShape()[axesOrder.get(Axis.Z)];
+                int arrayZ = array.getShape()[axesOrder.get(Axis.Z)];
+                for (int z=0; z<fullResZ; z++) {
+                    zIndexMap.put(z, Math.round(z * arrayZ / fullResZ));
+                }
             }
         } catch (Exception e) {
             // FIXME: Throw the right exception
             throw new RuntimeException(e);
         }
+        
     }
 
     @Override
     public Dimension getTileSize() {
         try {
             int[] chunks = getChunks()[resolutionLevel];
-            return new Dimension(chunks[4], chunks[3]);
+            return new Dimension(chunks[axesOrder.get(Axis.X)], chunks[axesOrder.get(Axis.Y)]);
         } catch (Exception e) {
             // FIXME: Throw the right exception
             throw new RuntimeException(e);
