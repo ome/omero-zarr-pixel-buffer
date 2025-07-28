@@ -33,11 +33,21 @@ repositories {
 
 dependencies {
     api 'org.openmicroscopy:omero-blitz:5.8.3'
+    
     implementation 'com.github.ben-manes.caffeine:caffeine:3.1.8'
     implementation 'dev.zarr:jzarr:0.4.2'
     implementation 'org.lasersonlab:s3fs:2.2.3'
     implementation 'com.amazonaws:aws-java-sdk-s3:1.12.659'
     implementation 'org.apache.tika:tika-core:1.28.5'
+    implementation 'net.java.dev.jna:jna:5.10.0'
+    implementation 'ome:formats-gpl:7.3.1'
+    implementation 'info.picocli:picocli:4.7.5'
+    implementation 'com.univocity:univocity-parsers:2.8.4'
+    implementation 'dev.zarr:zarr-java:0.0.2'
+    implementation 'javax.xml.bind:jaxb-api:2.3.0'
+    implementation group: 'ch.qos.logback', name: 'logback-classic', version: '1.3.14'
+    implementation group: 'ch.qos.logback', name: 'logback-core', version: '1.3.14'
+    implementation 'org.apache.maven:maven-artifact:3.9.4'
 
     testImplementation 'info.picocli:picocli:4.7.5'
     testImplementation 'com.glencoesoftware:bioformats2raw:0.11.0'

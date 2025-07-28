@@ -78,10 +78,10 @@ public class ZarrPixelsService extends ome.io.nio.PixelsService {
 
     /** Root path vs. metadata cache. */
     private final
-        AsyncLoadingCache<Path, Map<String, Object>> zarrMetadataCache;
+        AsyncLoadingCache<ZarrPath, Map<String, Object>> zarrMetadataCache;
 
     /** Array path vs. ZarrArray cache */
-    private final AsyncLoadingCache<Path, ZarrArray> zarrArrayCache;
+    private final AsyncLoadingCache<ZarrPath, ZArray> zarrArrayCache;
 
     /** Default constructor. */
     public ZarrPixelsService(
@@ -113,12 +113,16 @@ public class ZarrPixelsService extends ome.io.nio.PixelsService {
      * @param path path to get Zarr metadata from
      * @return See above.
      */
-    public static Map<String, Object> getZarrMetadata(Path path)
+    public static Map<String, Object> getZarrMetadata(ZarrPath path)
             throws IOException {
         // FIXME: Really should be ZarrUtils.readAttributes() to allow for
         // attribute retrieval from either a ZarrArray or ZarrGroup but ZarrPath
         // is package private at the moment.
-        return ZarrGroup.open(path).getAttributes();
+        if (path.getVersion().equals(ZarrInfo.ZARR_V2)) {
+            return ZarrGroup.open((Path)path.getPath()).getAttributes();
+        } else  {
+            throw new RuntimeException("Unsupported Zarr version: " + path.getVersion());
+        }
     }
 
     /**
@@ -127,8 +131,12 @@ public class ZarrPixelsService extends ome.io.nio.PixelsService {
      * @param path path to open a Zarr array from
      * @return See above.
      */
-    public static ZarrArray getZarrArray(Path path) throws IOException {
-        return ZarrArray.open(path);
+    public static ZArray getZarrArray(ZarrPath path) throws IOException {
+        if (path.getVersion().equals(ZarrInfo.ZARR_V2)) {
+            return new ZArrayv2(ZarrArray.open((Path)path.getPath()));
+        } else  {
+            throw new RuntimeException("Unsupported Zarr version: " + path.getVersion());
+        }
     }
 
     /**
@@ -308,8 +316,9 @@ public class ZarrPixelsService extends ome.io.nio.PixelsService {
             throw new IllegalArgumentException(
                     "No root for Mask:" + mask.getId());
         }
+        ZarrPath zarrPath = new ZarrPathv2(asPath(root));
         return new ZarrPixelBuffer(
-                pixels, asPath(root), maxPlaneWidth, maxPlaneHeight,
+                pixels, zarrPath, maxPlaneWidth, maxPlaneHeight,
                 zarrMetadataCache, zarrArrayCache);
     }
 
@@ -335,11 +344,11 @@ public class ZarrPixelsService extends ome.io.nio.PixelsService {
                 log.debug("No OME-NGFF root");
                 return null;
             }
-            Path root = asPath(uri);
+            ZarrInfo zarrInfo = new ZarrInfo(uri);
             log.info("OME-NGFF root is: " + uri);
             try {
                 ZarrPixelBuffer v = new ZarrPixelBuffer(
-                    pixels, root, maxPlaneWidth, maxPlaneHeight,
+                    pixels, zarrInfo.getZarrPath(), maxPlaneWidth, maxPlaneHeight,
                     zarrMetadataCache, zarrArrayCache);
                 log.info("Using OME-NGFF pixel buffer");
                 return v;
@@ -348,7 +357,7 @@ public class ZarrPixelsService extends ome.io.nio.PixelsService {
                     "Getting OME-NGFF pixel buffer failed - "
                     + "attempting to get local data", e);
             }
-        } catch (IOException e1) {
+        } catch (Exception e1) {
             log.debug(
                 "Failed to find OME-NGFF metadata for Pixels:{}",
                 pixels.getId());
