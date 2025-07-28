@@ -38,6 +38,9 @@ import com.bc.zarr.DataType;
 import com.bc.zarr.ZarrArray;
 import com.github.benmanes.caffeine.cache.AsyncLoadingCache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import com.glencoesoftware.omero.zarr.model.ZArray;
+import com.glencoesoftware.omero.zarr.model.ZArrayv2;
+import com.glencoesoftware.omero.zarr.model.ZarrPath;
 
 import loci.formats.FormatTools;
 import ome.io.nio.DimensionsOutOfBoundsException;
@@ -56,7 +59,7 @@ public class ZarrPixelBuffer implements PixelBuffer {
     private final Pixels pixels;
 
     /** Root of the OME-NGFF multiscale we are operating on */
-    private final Path root;
+    private final ZarrPath root;
 
     /** Requested resolution level */
     private int resolutionLevel;
@@ -74,7 +77,7 @@ public class ZarrPixelBuffer implements PixelBuffer {
     private final Map<String, Object> rootGroupAttributes;
 
     /** Zarr array corresponding to the current resolution level */
-    private ZarrArray array;
+    private ZArray array;
 
     /**
      * Mapping of Z plane indexes in full resolution to
@@ -90,10 +93,10 @@ public class ZarrPixelBuffer implements PixelBuffer {
 
     /** Root path vs. metadata cache */
     private final
-        AsyncLoadingCache<Path, Map<String, Object>> zarrMetadataCache;
+        AsyncLoadingCache<ZarrPath, Map<String, Object>> zarrMetadataCache;
 
-    /** Array path vs. ZarrArray cache */
-    private final AsyncLoadingCache<Path, ZarrArray> zarrArrayCache;
+    /** Array path vs. ZArray cache */
+    private final AsyncLoadingCache<ZarrPath, ZArray> zarrArrayCache;
 
     /** Supported axes, X and Y are essential */
     public enum Axis {
@@ -111,10 +114,10 @@ public class ZarrPixelBuffer implements PixelBuffer {
      * read operations
      * @throws IOException
      */
-    public ZarrPixelBuffer(Pixels pixels, Path root, Integer maxPlaneWidth,
+    public ZarrPixelBuffer(Pixels pixels, ZarrPath root, Integer maxPlaneWidth,
             Integer maxPlaneHeight,
-            AsyncLoadingCache<Path, Map<String, Object>> zarrMetadataCache,
-            AsyncLoadingCache<Path, ZarrArray> zarrArrayCache)
+            AsyncLoadingCache<ZarrPath, Map<String, Object>> zarrMetadataCache,
+            AsyncLoadingCache<ZarrPath, ZArray> zarrArrayCache)
             throws IOException {
         log.info("Creating ZarrPixelBuffer");
         this.pixels = pixels;
@@ -161,35 +164,6 @@ public class ZarrPixelBuffer implements PixelBuffer {
     }
 
     /**
-     * Get Bio-Formats/OMERO pixels type for buffer.
-     * @return See above.
-     */
-    public int getPixelsType() {
-        DataType dataType = array.getDataType();
-        switch (dataType) {
-            case u1:
-                return FormatTools.UINT8;
-            case i1:
-                return FormatTools.INT8;
-            case u2:
-                return FormatTools.UINT16;
-            case i2:
-                return FormatTools.INT16;
-            case u4:
-                return FormatTools.UINT32;
-            case i4:
-                return FormatTools.INT32;
-            case f4:
-                return FormatTools.FLOAT;
-            case f8:
-                return FormatTools.DOUBLE;
-            default:
-                throw new IllegalArgumentException(
-                        "Data type " + dataType + " not supported");
-        }
-    }
-
-    /**
      * Calculates the pixel length of a given NumPy like "shape".
      * @param shape the NumPy like "shape" to calculate the length of
      * @return See above
@@ -224,43 +198,43 @@ public class ZarrPixelBuffer implements PixelBuffer {
         }
         try {
             ByteBuffer asByteBuffer = ByteBuffer.wrap(buffer);
-            DataType dataType = array.getDataType();
+            int dataType = array.getPixelsType();
             for (int z = 0; z < planes; z++) {
                 if (axesOrder.containsKey(Axis.Z)) {
                     offset[axesOrder.get(Axis.Z)] = zIndexMap.get(originalZIndex + z);
                 }
                 switch (dataType) {
-                    case u1:
-                    case i1:
+                    case FormatTools.UINT8:
+                    case FormatTools.INT8:
                         array.read(buffer, shape, offset);
                         break;
-                    case u2:
-                    case i2:
+                    case FormatTools.UINT16:
+                    case FormatTools.INT16:
                     {
                         short[] data = (short[]) array.read(shape, offset);
                         asByteBuffer.asShortBuffer().put(data);
                         break;
                     }
-                    case u4:
-                    case i4:
+                    case FormatTools.UINT32:
+                    case FormatTools.INT32:
                     {
                         int[] data = (int[]) array.read(shape, offset);
                         asByteBuffer.asIntBuffer().put(data);
                         break;
                     }
-                    case i8:
-                    {
-                        long[] data = (long[]) array.read(shape, offset);
-                        asByteBuffer.asLongBuffer().put(data);
-                        break;
-                    }
-                    case f4:
+                    // case FormatTools.INT64:
+                    // {
+                    //     long[] data = (long[]) array.read(shape, offset);
+                    //     asByteBuffer.asLongBuffer().put(data);
+                    //     break;
+                    // }
+                    case FormatTools.FLOAT:
                     {
                         float[] data = (float[]) array.read(shape, offset);
                         asByteBuffer.asFloatBuffer().put(data);
                         break;
                     }
-                    case f8:
+                    case FormatTools.DOUBLE:
                     {
                         double[] data = (double[]) array.read(shape, offset);
                         asByteBuffer.asDoubleBuffer().put(data);
@@ -285,7 +259,7 @@ public class ZarrPixelBuffer implements PixelBuffer {
             return null;
         }
         PixelData d = new PixelData(
-                FormatTools.getPixelTypeString(getPixelsType()),
+                FormatTools.getPixelTypeString(array.getPixelsType()),
                 ByteBuffer.wrap(buffer));
         d.setOrder(ByteOrder.BIG_ENDIAN);
         return d;
@@ -301,8 +275,8 @@ public class ZarrPixelBuffer implements PixelBuffer {
         List<Map<String, String>> datasets = getDatasets();
         List<int[]> chunks = new ArrayList<int[]>();
         for (Map<String, String> dataset : datasets) {
-            ZarrArray resolutionArray = ZarrArray.open(
-                    root.resolve(dataset.get("path")));
+            ZarrPath dsPath = root.resolve(dataset.get("path"));
+            ZArray resolutionArray = new ZArrayv2(ZarrArray.open((Path)dsPath.getPath()));
             int[] shape = resolutionArray.getChunks();
             chunks.add(shape);
         }
@@ -834,17 +808,17 @@ public class ZarrPixelBuffer implements PixelBuffer {
 
     @Override
     public int getByteWidth() {
-        return FormatTools.getBytesPerPixel(getPixelsType());
+        return FormatTools.getBytesPerPixel(array.getPixelsType());
     }
 
     @Override
     public boolean isSigned() {
-        return FormatTools.isSigned(getPixelsType());
+        return FormatTools.isSigned(array.getPixelsType());
     }
 
     @Override
     public boolean isFloat() {
-        return FormatTools.isFloatingPoint(getPixelsType());
+        return FormatTools.isFloatingPoint(array.getPixelsType());
     }
 
     @Override
@@ -914,6 +888,10 @@ public class ZarrPixelBuffer implements PixelBuffer {
                 resolutionLevel - (resolutionLevels - 1));
     }
 
+    public int getPixelsType() {
+        return array.getPixelsType();
+    }
+
     @Override
     public void setResolutionLevel(int resolutionLevel) {
         if (resolutionLevel >= resolutionLevels) {
@@ -938,7 +916,7 @@ public class ZarrPixelBuffer implements PixelBuffer {
             array = zarrArrayCache.get(
                     root.resolve(Integer.toString(this.resolutionLevel))).get();
 
-            ZarrArray fullResolutionArray = zarrArrayCache.get(
+            ZArray fullResolutionArray = zarrArrayCache.get(
                     root.resolve("0")).get();
             
             if (axesOrder.containsKey(Axis.Z)) {

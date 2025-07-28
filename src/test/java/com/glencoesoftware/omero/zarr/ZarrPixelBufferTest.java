@@ -45,6 +45,9 @@ import com.bc.zarr.ZarrGroup;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.glencoesoftware.bioformats2raw.Converter;
+import com.glencoesoftware.omero.zarr.model.ZarrInfo;
+import com.glencoesoftware.omero.zarr.model.ZarrPath;
+import com.glencoesoftware.omero.zarr.model.ZarrPathv2;
 
 import loci.formats.FormatTools;
 import loci.formats.in.FakeReader;
@@ -67,7 +70,7 @@ public class ZarrPixelBufferTest {
             Pixels pixels, Path path,
             Integer maxPlaneWidth, Integer maxPlaneHeight) throws IOException {
         return new ZarrPixelBuffer(
-                pixels, path, maxPlaneWidth, maxPlaneHeight,
+                pixels, new ZarrPathv2(path), maxPlaneWidth, maxPlaneHeight,
                 Caffeine.newBuilder()
                     .maximumSize(0)
                     .buildAsync(ZarrPixelsService::getZarrMetadata),
@@ -82,7 +85,7 @@ public class ZarrPixelBufferTest {
      *
      * @param additionalArgs CLI arguments as needed beyond "input output"
      */
-    void assertBioFormats2Raw(Path input, Path output, String...additionalArgs)
+    static void assertBioFormats2Raw(Path input, Path output, String...additionalArgs)
             throws IOException {
         List<String> args = new ArrayList<String>(
                 Arrays.asList(new String[] { "--compression", "null" }));
