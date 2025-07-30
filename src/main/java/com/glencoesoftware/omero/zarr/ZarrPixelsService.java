@@ -120,6 +120,9 @@ public class ZarrPixelsService extends ome.io.nio.PixelsService {
         // is package private at the moment.
         if (path.getVersion().equals(ZarrInfo.ZARR_V2)) {
             return ZarrGroup.open((Path)path.getPath()).getAttributes();
+        } else if (path.getVersion().equals(ZarrInfo.ZARR_V3)) {
+            StoreHandle sh = ((StoreHandle)path.getPath());
+            return Group.open(sh).metadata.attributes;
         } else  {
             throw new RuntimeException("Unsupported Zarr version: " + path.getVersion());
         }
@@ -134,6 +137,15 @@ public class ZarrPixelsService extends ome.io.nio.PixelsService {
     public static ZArray getZarrArray(ZarrPath path) throws IOException {
         if (path.getVersion().equals(ZarrInfo.ZARR_V2)) {
             return new ZArrayv2(ZarrArray.open((Path)path.getPath()));
+        } else if (path.getVersion().equals(ZarrInfo.ZARR_V3)) {
+            StoreHandle sh = ((StoreHandle)path.getPath());
+            Array array;
+            try {
+                array = (Array) Group.open(sh).get();
+            } catch (ZarrException e) {
+                throw new IOException(e);
+            }
+            return new ZArrayv3(array);
         } else  {
             throw new RuntimeException("Unsupported Zarr version: " + path.getVersion());
         }
