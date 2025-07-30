@@ -236,4 +236,14 @@ public class ZarrInfo {
         String zarr = location.substring(location.lastIndexOf("/")+1);
         return new FilesystemStore(store).resolve(zarr);
     }
+
+    @Override
+    public String toString() {
+        return "ZarrInfo{" +
+                "location='" + location + '\'' +
+                ", remote=" + remote +
+                ", zarrVersion=" + zarrVersion +
+                ", ngffVersion=" + ngffVersion +
+                '}';
+    }
 }
