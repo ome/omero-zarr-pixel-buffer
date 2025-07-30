@@ -48,7 +48,11 @@ public class ZArrayv3 implements ZArray {
     @Override
     public Object read(int[] shape, int[] offset) throws IOException, InvalidRangeException {
         try {
-            return array.read(null, shape).copyTo1DJavaArray();
+            long[] offsetLong = new long[offset.length];
+            for (int i = 0; i < offset.length; i++) {
+                offsetLong[i] = offset[i];
+            }
+            return array.read(offsetLong, shape).copyTo1DJavaArray();
         } catch (ZarrException e) {
             throw new IOException(e);
         }
