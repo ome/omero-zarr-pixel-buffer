@@ -1,4 +1,4 @@
-package com.glencoesoftware.omero.zarr.model;
+package com.glencoesoftware.omero.zarr.compat;
 
 import java.io.IOException;
 

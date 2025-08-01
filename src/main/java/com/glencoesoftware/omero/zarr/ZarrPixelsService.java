@@ -36,21 +36,11 @@ import org.slf4j.LoggerFactory;
 import com.google.common.base.Splitter;
 import com.upplication.s3fs.OmeroS3FilesystemProvider;
 
-import dev.zarr.zarrjava.ZarrException;
-import dev.zarr.zarrjava.store.StoreHandle;
-import dev.zarr.zarrjava.v3.Array;
-import dev.zarr.zarrjava.v3.Group;
-
-import com.bc.zarr.ZarrArray;
-import com.bc.zarr.ZarrGroup;
 import com.github.benmanes.caffeine.cache.AsyncLoadingCache;
 import com.github.benmanes.caffeine.cache.Caffeine;
-import com.glencoesoftware.omero.zarr.model.ZArray;
-import com.glencoesoftware.omero.zarr.model.ZArrayv2;
-import com.glencoesoftware.omero.zarr.model.ZArrayv3;
-import com.glencoesoftware.omero.zarr.model.ZarrInfo;
-import com.glencoesoftware.omero.zarr.model.ZarrPath;
-import com.glencoesoftware.omero.zarr.model.ZarrPathv2;
+import com.glencoesoftware.omero.zarr.compat.ZArray;
+import com.glencoesoftware.omero.zarr.compat.ZarrInfo;
+import com.glencoesoftware.omero.zarr.compat.ZarrPath;
 
 import ome.api.IQuery;
 import ome.conditions.LockTimeout;
@@ -131,14 +121,7 @@ public class ZarrPixelsService extends ome.io.nio.PixelsService {
         // FIXME: Really should be ZarrUtils.readAttributes() to allow for
         // attribute retrieval from either a ZarrArray or ZarrGroup but ZarrPath
         // is package private at the moment.
-        if (path.getVersion().equals(ZarrInfo.ZARR_V2)) {
-            return ZarrGroup.open((Path)path.getPath()).getAttributes();
-        } else if (path.getVersion().equals(ZarrInfo.ZARR_V3)) {
-            StoreHandle sh = ((StoreHandle)path.getPath());
-            return Group.open(sh).metadata.attributes;
-        } else  {
-            throw new RuntimeException("Unsupported Zarr version: " + path.getVersion());
-        }
+        return path.getMetadata();
     }
 
     /**
@@ -148,20 +131,7 @@ public class ZarrPixelsService extends ome.io.nio.PixelsService {
      * @throws IOException
      */
     public static ZArray getZarrArray(ZarrPath path) throws IOException {
-        if (path.getVersion().equals(ZarrInfo.ZARR_V2)) {
-            return new ZArrayv2(ZarrArray.open((Path)path.getPath()));
-        } else if (path.getVersion().equals(ZarrInfo.ZARR_V3)) {
-            StoreHandle sh = ((StoreHandle)path.getPath());
-            Array array;
-            try {
-                array = (Array) Group.open(sh).get();
-            } catch (ZarrException e) {
-                throw new IOException(e);
-            }
-            return new ZArrayv3(array);
-        } else  {
-            throw new RuntimeException("Unsupported Zarr version: " + path.getVersion());
-        }
+        return path.getArray();
     }
 
     /**
@@ -337,7 +307,8 @@ public class ZarrPixelsService extends ome.io.nio.PixelsService {
             throw new IllegalArgumentException(
                     "No root for Mask:" + mask.getId());
         }
-        ZarrPath zarrPath = new ZarrPathv2(asPath(root));
+        ZarrInfo zarrInfo = new ZarrInfo(root);
+        ZarrPath zarrPath = zarrInfo.getZarrPath();
         return new ZarrPixelBuffer(
                 pixels, zarrPath, maxPlaneWidth, maxPlaneHeight,
                 zarrMetadataCache, zarrArrayCache);
@@ -365,7 +336,7 @@ public class ZarrPixelsService extends ome.io.nio.PixelsService {
                 return null;
             }
             ZarrInfo zarrInfo = new ZarrInfo(uri);
-            log.info("OME-NGFF root is: " + uri);
+            log.info("OME-NGFF root is: " + zarrInfo);
             try {
                 ZarrPixelBuffer v = new ZarrPixelBuffer(
                     pixels, zarrInfo.getZarrPath(), maxPlaneWidth, maxPlaneHeight,

@@ -1,4 +1,4 @@
-package com.glencoesoftware.omero.zarr.model;
+package com.glencoesoftware.omero.zarr.compat;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -9,7 +9,7 @@ import dev.zarr.zarrjava.v3.DataType;
 import loci.formats.FormatTools;
 import ucar.ma2.InvalidRangeException;
 
-public class ZArrayv3 implements ZArray {
+class ZArrayv3 implements ZArray {
 
     private Array array;
 
@@ -38,7 +38,11 @@ public class ZArrayv3 implements ZArray {
     @Override
     public void read(byte[] buffer, int[] shape, int[] offset) throws IOException, InvalidRangeException {
        try {
-        ByteBuffer b = array.read(null, shape).getDataAsByteBuffer();
+        long[] offsetLong = new long[offset.length];
+        for (int i = 0; i < offset.length; i++) {
+            offsetLong[i] = offset[i];
+        }
+        ByteBuffer b = array.read(offsetLong, shape).getDataAsByteBuffer();
         System.arraycopy(b.array(), 0, buffer, 0, buffer.length);
        } catch (ZarrException e) {
         throw new IOException(e);

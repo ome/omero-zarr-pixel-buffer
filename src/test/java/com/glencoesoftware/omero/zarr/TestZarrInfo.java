@@ -9,7 +9,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
-import com.glencoesoftware.omero.zarr.model.ZarrInfo;
+import com.glencoesoftware.omero.zarr.compat.ZarrInfo;
 
 public class TestZarrInfo {
     

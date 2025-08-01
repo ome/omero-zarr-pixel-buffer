@@ -23,7 +23,6 @@ import java.io.IOException;
 import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -34,13 +33,10 @@ import java.util.stream.IntStream;
 
 import org.slf4j.LoggerFactory;
 
-import com.bc.zarr.DataType;
-import com.bc.zarr.ZarrArray;
 import com.github.benmanes.caffeine.cache.AsyncLoadingCache;
 import com.github.benmanes.caffeine.cache.Caffeine;
-import com.glencoesoftware.omero.zarr.model.ZArray;
-import com.glencoesoftware.omero.zarr.model.ZArrayv2;
-import com.glencoesoftware.omero.zarr.model.ZarrPath;
+import com.glencoesoftware.omero.zarr.compat.ZArray;
+import com.glencoesoftware.omero.zarr.compat.ZarrPath;
 
 import loci.formats.FormatTools;
 import ome.io.nio.DimensionsOutOfBoundsException;
@@ -276,7 +272,7 @@ public class ZarrPixelBuffer implements PixelBuffer {
         List<int[]> chunks = new ArrayList<int[]>();
         for (Map<String, String> dataset : datasets) {
             ZarrPath dsPath = root.resolve(dataset.get("path"));
-            ZArray resolutionArray = new ZArrayv2(ZarrArray.open((Path)dsPath.getPath()));
+            ZArray resolutionArray = dsPath.getArray(); //new ZArrayv2(ZarrArray.open((Path)dsPath.getPath()));
             int[] shape = resolutionArray.getChunks();
             chunks.add(shape);
         }
@@ -913,9 +909,8 @@ public class ZarrPixelBuffer implements PixelBuffer {
             zIndexMap.clear();
         }
         try {
-            array = zarrArrayCache.get(
-                    root.resolve(Integer.toString(this.resolutionLevel))).get();
-
+            ZarrPath p = root.resolve(Integer.toString(this.resolutionLevel));
+            array = zarrArrayCache.get(p).get(); 
             ZArray fullResolutionArray = zarrArrayCache.get(
                     root.resolve("0")).get();
             

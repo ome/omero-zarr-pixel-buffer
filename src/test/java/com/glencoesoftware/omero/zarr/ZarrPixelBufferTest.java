@@ -45,9 +45,8 @@ import com.bc.zarr.ZarrGroup;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.glencoesoftware.bioformats2raw.Converter;
-import com.glencoesoftware.omero.zarr.model.ZarrInfo;
-import com.glencoesoftware.omero.zarr.model.ZarrPath;
-import com.glencoesoftware.omero.zarr.model.ZarrPathv2;
+import com.glencoesoftware.omero.zarr.compat.ZarrInfo;
+import com.glencoesoftware.omero.zarr.compat.ZarrPath;
 
 import loci.formats.FormatTools;
 import loci.formats.in.FakeReader;
@@ -69,8 +68,9 @@ public class ZarrPixelBufferTest {
     public ZarrPixelBuffer createPixelBuffer(
             Pixels pixels, Path path,
             Integer maxPlaneWidth, Integer maxPlaneHeight) throws IOException {
+        ZarrInfo zarrInfo = new ZarrInfo(path.toString());
         return new ZarrPixelBuffer(
-                pixels, new ZarrPathv2(path), maxPlaneWidth, maxPlaneHeight,
+                pixels, zarrInfo.getZarrPath(), maxPlaneWidth, maxPlaneHeight,
                 Caffeine.newBuilder()
                     .maximumSize(0)
                     .buildAsync(ZarrPixelsService::getZarrMetadata),
