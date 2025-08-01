@@ -1,4 +1,4 @@
-package com.glencoesoftware.omero.zarr.model;
+package com.glencoesoftware.omero.zarr.compat;
 
 import java.io.IOException;
 
@@ -8,7 +8,7 @@ import com.bc.zarr.ZarrArray;
 import loci.formats.FormatTools;
 import ucar.ma2.InvalidRangeException;
 
-public class ZArrayv2 implements ZArray {
+class ZArrayv2 implements ZArray {
     
     private ZarrArray array;
 

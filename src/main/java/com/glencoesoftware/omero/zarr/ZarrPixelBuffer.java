@@ -27,7 +27,6 @@ import java.io.IOException;
 import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -271,7 +270,7 @@ public class ZarrPixelBuffer implements PixelBuffer {
         List<int[]> chunks = new ArrayList<int[]>();
         for (Map<String, String> dataset : datasets) {
             ZarrPath dsPath = root.resolve(dataset.get("path"));
-            ZArray resolutionArray = new ZArrayv2(ZarrArray.open((Path)dsPath.getPath()));
+            ZArray resolutionArray = dsPath.getArray(); //new ZArrayv2(ZarrArray.open((Path)dsPath.getPath()));
             int[] shape = resolutionArray.getChunks();
             chunks.add(shape);
         }
@@ -919,9 +918,8 @@ public class ZarrPixelBuffer implements PixelBuffer {
             zIndexMap.clear();
         }
         try {
-            array = zarrArrayCache.get(
-                    root.resolve(Integer.toString(this.resolutionLevel))).get();
-
+            ZarrPath p = root.resolve(Integer.toString(this.resolutionLevel));
+            array = zarrArrayCache.get(p).get(); 
             ZArray fullResolutionArray = zarrArrayCache.get(
                     root.resolve("0")).get();
             

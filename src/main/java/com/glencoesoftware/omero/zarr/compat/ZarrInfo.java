@@ -1,4 +1,4 @@
-package com.glencoesoftware.omero.zarr.model;
+package com.glencoesoftware.omero.zarr.compat;
 
 import java.io.IOException;
 import java.net.URI;
@@ -29,9 +29,10 @@ import dev.zarr.zarrjava.v3.GroupMetadata;
 
 
 /**
- * To access the zarr data use:
- * For zarr version 2, resp NGFF 0.4: asPath()
- * For zarr version 3, resp NGFF > 0.5: asStoreHandle()
+ * Tries to determine some properties of the zarr path,
+ * if it's remote or local, and the zarr and ngff versions.
+ * 
+ * To access the zarr metadata/array use getZarrPath().
  */
 public class ZarrInfo {
     private static final org.slf4j.Logger log =
@@ -40,6 +41,7 @@ public class ZarrInfo {
     public static final ComparableVersion ZARR_V2 = new ComparableVersion("2");
     public static final ComparableVersion ZARR_V3 = new ComparableVersion("3");
     public static final ComparableVersion NGFF_V0_4 = new ComparableVersion("0.4");
+    public static final ComparableVersion NGFF_V0_5 = new ComparableVersion("0.5");
 
     private ComparableVersion zarrVersion;
 
@@ -52,10 +54,6 @@ public class ZarrInfo {
     public ZarrInfo(String location) {
         this.location = location.endsWith("/") ? location.substring(0, location.length() - 1) : location;
         checkProperties();
-        log.info("Initialized ZarrPath: " + location);
-        log.info("Remote store: " + remote);
-        log.info("Zarr version: " + zarrVersion);
-        log.info("NGFF version: " + ngffVersion);
     }
 
     /**
@@ -143,6 +141,9 @@ public class ZarrInfo {
         }
     }
 
+    private Path asPath() throws IOException {
+        return asPath(location);
+    }
     /**
      * Converts an NGFF root string to a path, initializing a {@link FileSystem}
      * if required
@@ -151,14 +152,7 @@ public class ZarrInfo {
      * directory has not been specified in configuration.
      * @throws IOException
      */
-    public Path asPath() throws IOException {
-        if (location.isEmpty()) {
-            return null;
-        }
-        return asPath(location);
-    }
-
-    public static Path asPath(String location) throws IOException {
+    private Path asPath(String location) throws IOException {
         try {
             URI uri = new URI(location);
             if ("s3".equals(uri.getScheme())) {
@@ -209,16 +203,12 @@ public class ZarrInfo {
         return remote;
     }
 
-    public StoreHandle asStoreHandle() {
-        return asStoreHandle(location);
-    }
-
     /**
      * Return a store handle.
      * For zarr version 3, resp NGFF > 0.5
      * @return
      */
-    public static StoreHandle asStoreHandle(String location) {
+    private StoreHandle asStoreHandle() {
         //TODO: Properly parse the URI to get store/endpoint, bucket, etc.
 
         if (location.toLowerCase().startsWith("http://") || location.toLowerCase().startsWith("https://")) {

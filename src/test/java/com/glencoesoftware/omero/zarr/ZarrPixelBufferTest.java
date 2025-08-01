@@ -65,8 +65,9 @@ public class ZarrPixelBufferTest {
     public ZarrPixelBuffer createPixelBuffer(
             Pixels pixels, Path path,
             Integer maxPlaneWidth, Integer maxPlaneHeight) throws IOException {
+        ZarrInfo zarrInfo = new ZarrInfo(path.toString());
         return new ZarrPixelBuffer(
-                pixels, new ZarrPathv2(path), maxPlaneWidth, maxPlaneHeight,
+                pixels, zarrInfo.getZarrPath(), maxPlaneWidth, maxPlaneHeight,
                 Caffeine.newBuilder()
                     .maximumSize(0)
                     .buildAsync(ZarrPixelsService::getZarrMetadata),
