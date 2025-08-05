@@ -52,6 +52,8 @@ Then, install on the OMERO.server (the version of the dependencies are available
 - [s3fs](https://repo1.maven.org/maven2/org/lasersonlab/s3fs/)
 - [aws-java-sdk-s3](https://repo1.maven.org/maven2/com/amazonaws/aws-java-sdk-s3/)
 - `blosc` library for your system
+	- For **Ubuntu/Debian** : [libblosc-dev](https://pkgs.org/download/libblosc-dev)
+	- For **RHEL** systems : [blosc-devel](https://pkgs.org/download/blosc-devel)
 
 You may need to restart the server.
 
