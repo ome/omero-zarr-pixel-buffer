@@ -56,13 +56,13 @@ public class TestZarr {
     private int sizeZ = 5;
     private int sizeT = 10;
     private int sizeC = 3;
-    private String order = "TCZYX"; // Note: Reverse for ome.model.enums.DimensionOrder
+    private String order = "TCZYX"; // Note: Reverse of ome.model.enums.DimensionOrder
     private Path path = Path.of("./test.zarr");
     private DataType dataType = DataType.u1;
     private boolean overwrite = false;
     
     // Text which is displayed on each plane
-    private String text = "Channel <C>, Timepoint <T>, Z-plane <Z>";
+    private String text = "Channel %s, Timepoint %s, Z-plane %s";
     // If not specified then the position will be random
     private OptionalInt textX = OptionalInt.empty();
     private OptionalInt textY = OptionalInt.empty();
@@ -175,15 +175,9 @@ public class TestZarr {
      * @throws InvalidRangeException
      */
     public TestZarr createImage() throws IOException, InvalidRangeException {
-        for (int c = 0; c <= sizeC; c++) {
-            if (c == sizeC && sizeC > 0)
-                break;
-            for (int t = 0; t <= sizeT; t++) {
-                if (t == sizeT && sizeT > 0)
-                    break;
-                for (int z = 0; z <= sizeZ; z++) {
-                    if (z == sizeZ && sizeZ > 0)
-                        break;
+        for (int c = 0; c < Math.max(1, sizeC); c++) {
+            for (int t = 0; t < Math.max(1, sizeT); t++) {
+                for (int z = 0; z < Math.max(1, sizeZ); z++) {
                     byte[] plane = generateGreyscaleImageWithText(c, z, t);
                     int[] sh = new int[order.length()];
                     int[] off = new int[order.length()];
@@ -288,7 +282,7 @@ public class TestZarr {
         int fontSize = Math.min(sizeX, sizeY) / 20; // Scale font size based on image dimensions
         g2d.setFont(new Font("Arial", Font.BOLD, fontSize));
 
-        String planeText = text.replace("<C>", String.valueOf(c)).replace("<T>", String.valueOf(t)).replace("<Z>", String.valueOf(z));
+        String planeText = text.format(text, c, t, z);
         // Get text dimensions
         int textWidth = g2d.getFontMetrics().stringWidth(planeText);
         int textHeight = g2d.getFontMetrics().getHeight();
