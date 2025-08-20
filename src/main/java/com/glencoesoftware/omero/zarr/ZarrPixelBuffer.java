@@ -565,28 +565,21 @@ public class ZarrPixelBuffer implements PixelBuffer {
             checkBounds(x + w - 1, y + h - 1, z, c, t);
 
             int[] shape = new int[axesOrder.size()];
-            if (axesOrder.containsKey(Axis.T)) {
-                shape[axesOrder.get(Axis.T)] = 1;
-            }
-            if (axesOrder.containsKey(Axis.C)) {
-                shape[axesOrder.get(Axis.C)] = 1;
-            }
-            if (axesOrder.containsKey(Axis.Z)) {
-                shape[axesOrder.get(Axis.Z)] = 1;
-            }
-            shape[axesOrder.get(Axis.Y)] = h;
-            shape[axesOrder.get(Axis.X)] = w;
-
             int[] offset = new int[axesOrder.size()];
             if (axesOrder.containsKey(Axis.T)) {
+                shape[axesOrder.get(Axis.T)] = 1;
                 offset[axesOrder.get(Axis.T)] = t;
             }
             if (axesOrder.containsKey(Axis.C)) {
+                shape[axesOrder.get(Axis.C)] = 1;
                 offset[axesOrder.get(Axis.C)] = c;
             }
             if (axesOrder.containsKey(Axis.Z)) {
+                shape[axesOrder.get(Axis.Z)] = 1;
                 offset[axesOrder.get(Axis.Z)] = z;
             }
+            shape[axesOrder.get(Axis.Y)] = h;
+            shape[axesOrder.get(Axis.X)] = w;
             offset[axesOrder.get(Axis.Y)] = y;
             offset[axesOrder.get(Axis.X)] = x;
 
@@ -691,28 +684,21 @@ public class ZarrPixelBuffer implements PixelBuffer {
         checkBounds(x + w - 1, y + h - 1, z, c, t);
 
         int[] shape = new int[axesOrder.size()];
-        if (axesOrder.containsKey(Axis.T)) {
-            shape[axesOrder.get(Axis.T)] = 1;
-        }
-        if (axesOrder.containsKey(Axis.C)) {
-            shape[axesOrder.get(Axis.C)] = 1;
-        }
-        if (axesOrder.containsKey(Axis.Z)) {
-            shape[axesOrder.get(Axis.Z)] = getSizeZ();
-        }
-        shape[axesOrder.get(Axis.Y)] = h;
-        shape[axesOrder.get(Axis.X)] = w;
-
         int[] offset = new int[axesOrder.size()];
         if (axesOrder.containsKey(Axis.T)) {
+            shape[axesOrder.get(Axis.T)] = 1;
             offset[axesOrder.get(Axis.T)] = t;
         }
         if (axesOrder.containsKey(Axis.C)) {
+            shape[axesOrder.get(Axis.C)] = 1;
             offset[axesOrder.get(Axis.C)] = c;
         }
         if (axesOrder.containsKey(Axis.Z)) {
+            shape[axesOrder.get(Axis.Z)] = getSizeZ();
             offset[axesOrder.get(Axis.Z)] = z;
         }
+        shape[axesOrder.get(Axis.Y)] = h;
+        shape[axesOrder.get(Axis.X)] = w;
         offset[axesOrder.get(Axis.Y)] = y;
         offset[axesOrder.get(Axis.X)] = x;
 
@@ -745,28 +731,21 @@ public class ZarrPixelBuffer implements PixelBuffer {
         checkBounds(x + w - 1, y + h - 1, z, c, t);
 
         int[] shape = new int[axesOrder.size()];
-        if (axesOrder.containsKey(Axis.T)) {
-            shape[axesOrder.get(Axis.T)] = 1;
-        }
-        if (axesOrder.containsKey(Axis.C)) {
-            shape[axesOrder.get(Axis.C)] = getSizeC();
-        }
-        if (axesOrder.containsKey(Axis.Z)) {
-            shape[axesOrder.get(Axis.Z)] = getSizeZ();
-        }
-        shape[axesOrder.get(Axis.Y)] = h;
-        shape[axesOrder.get(Axis.X)] = w;
-
         int[] offset = new int[axesOrder.size()];
         if (axesOrder.containsKey(Axis.T)) {
+            shape[axesOrder.get(Axis.T)] = 1;
             offset[axesOrder.get(Axis.T)] = t;
         }
         if (axesOrder.containsKey(Axis.C)) {
+            shape[axesOrder.get(Axis.C)] = getSizeC();
             offset[axesOrder.get(Axis.C)] = c;
         }
         if (axesOrder.containsKey(Axis.Z)) {
+            shape[axesOrder.get(Axis.Z)] = getSizeZ();
             offset[axesOrder.get(Axis.Z)] = z;
         }
+        shape[axesOrder.get(Axis.Y)] = h;
+        shape[axesOrder.get(Axis.X)] = w;
         offset[axesOrder.get(Axis.Y)] = y;
         offset[axesOrder.get(Axis.X)] = x;
 
