@@ -226,7 +226,7 @@ public class ZarrPixelBuffer implements PixelBuffer {
         try {
             ByteBuffer asByteBuffer = ByteBuffer.wrap(buffer);
             DataType dataType = array.getDataType();
-            for (int z=0; z<planes; z++) {
+            for (int z = 0; z < planes; z++) {
                 if (axesOrder.containsKey(Axis.Z)) {
                     offset[axesOrder.get(Axis.Z)] = zIndexMap.get(originalZIndex + z);
                 }
@@ -337,7 +337,7 @@ public class ZarrPixelBuffer implements PixelBuffer {
             order.put(Axis.Y, 3);
             order.put(Axis.X, 4);
         } else {
-            for (int i=0; i<axesData.size(); i++) {
+            for (int i = 0; i < axesData.size(); i++) {
                 Map<String, Object> axis = axesData.get(i);
                 String name = axis.get("name").toString().toUpperCase();
                 try {
@@ -945,7 +945,7 @@ public class ZarrPixelBuffer implements PixelBuffer {
                 // if no Z downsampling, this is just an identity map
                 int fullResZ = fullResolutionArray.getShape()[axesOrder.get(Axis.Z)];
                 int arrayZ = array.getShape()[axesOrder.get(Axis.Z)];
-                for (int z=0; z<fullResZ; z++) {
+                for (int z = 0; z < fullResZ; z++) {
                     zIndexMap.put(z, Math.round(z * arrayZ / fullResZ));
                 }
             }
