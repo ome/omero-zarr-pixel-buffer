@@ -130,7 +130,7 @@ public class ZarrPixelBuffer implements PixelBuffer {
         if (!rootGroupAttributes.containsKey("multiscales")) {
             throw new IllegalArgumentException("Missing multiscales metadata!");
         }
-        this.axesOrder = getAxesOrder();
+        getAxesOrder();
         this.resolutionLevels = this.getResolutionLevels();
         setResolutionLevel(this.resolutionLevels - 1);
         if (this.resolutionLevel < 0) {
@@ -226,7 +226,7 @@ public class ZarrPixelBuffer implements PixelBuffer {
         try {
             ByteBuffer asByteBuffer = ByteBuffer.wrap(buffer);
             DataType dataType = array.getDataType();
-            for (int z=0; z<planes; z++) {
+            for (int z = 0; z < planes; z++) {
                 if (axesOrder.containsKey(Axis.Z)) {
                     offset[axesOrder.get(Axis.Z)] = zIndexMap.get(originalZIndex + z);
                 }
@@ -323,34 +323,37 @@ public class ZarrPixelBuffer implements PixelBuffer {
     }
 
     /**
-     * Retrieves the axes metadata of the first multiscale
+     * Retrieves the axes order of the first multiscale
      * @return See above.
      */
     public Map<Axis, Integer> getAxesOrder() {
-        HashMap<Axis, Integer> order = new HashMap<>();
+        if (axesOrder != null) {
+            return axesOrder;
+        }
+        axesOrder = new HashMap<Axis, Integer>();
         List<Map<String, Object>> axesData = (List<Map<String, Object>>) getMultiscalesMetadata().get(0).get("axes");
         if (axesData == null) {
             log.warn("No axes metadata found, defaulting to standard axes TCZYX");
-            order.put(Axis.T, 0);
-            order.put(Axis.C, 1);
-            order.put(Axis.Z, 2);
-            order.put(Axis.Y, 3);
-            order.put(Axis.X, 4);
+            axesOrder.put(Axis.T, 0);
+            axesOrder.put(Axis.C, 1);
+            axesOrder.put(Axis.Z, 2);
+            axesOrder.put(Axis.Y, 3);
+            axesOrder.put(Axis.X, 4);
         } else {
-            for (int i=0; i<axesData.size(); i++) {
+            for (int i = 0; i < axesData.size(); i++) {
                 Map<String, Object> axis = axesData.get(i);
                 String name = axis.get("name").toString().toUpperCase();
                 try {
-                    order.put(Axis.valueOf(name), i);
+                    axesOrder.put(Axis.valueOf(name), i);
                 } catch (IllegalArgumentException e) {
                     throw new IllegalArgumentException("Invalid axis name (only T,C,Z,Y,X are supported): " + name);
                 }
             }
         }
-        if (!order.containsKey(Axis.X) || !order.containsKey(Axis.Y)) {
+        if (!axesOrder.containsKey(Axis.X) || !axesOrder.containsKey(Axis.Y)) {
             throw new IllegalArgumentException("Missing X or Y axis!");
         }
-        return order;
+        return axesOrder;
     }
 
     /**
@@ -945,7 +948,7 @@ public class ZarrPixelBuffer implements PixelBuffer {
                 // if no Z downsampling, this is just an identity map
                 int fullResZ = fullResolutionArray.getShape()[axesOrder.get(Axis.Z)];
                 int arrayZ = array.getShape()[axesOrder.get(Axis.Z)];
-                for (int z=0; z<fullResZ; z++) {
+                for (int z = 0; z < fullResZ; z++) {
                     zIndexMap.put(z, Math.round(z * arrayZ / fullResZ));
                 }
             }
