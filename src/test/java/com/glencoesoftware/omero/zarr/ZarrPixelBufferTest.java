@@ -1062,15 +1062,9 @@ public class ZarrPixelBufferTest {
         int expectedTests = pixC * pixT * pixZ;
         int testCount = 0;
         try (ZarrPixelBuffer zpbuf = createPixelBuffer(pixels, testZarrPath.resolve("0"), sizeX, sizeY)) {
-            for (int t = 0; t <= sizeT; t++) {
-                if (t == sizeT && sizeT > 0)
-                    break;
-                for (int z = 0; z <= sizeZ; z++) {
-                    if (z == sizeZ && sizeZ > 0)
-                        break;
-                    for (int c = 0; c <= sizeC; c++) {
-                        if (c == sizeC && sizeC > 0)
-                            break;
+            for (int t = 0; t < Math.max(sizeT, 1); t++) {
+                for (int z = 0; z < Math.max(sizeZ, 1); z++) {
+                    for (int c = 0; c < Math.max(sizeC, 1); c++) {
                         byte[] expected = testZarr.generateGreyscaleImageWithText(c, z, t);
                         byte[] actual = zpbuf.getPlane(z, c, t).getData().array();
                         Assert.assertArrayEquals(expected, actual);

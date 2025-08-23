@@ -216,13 +216,12 @@ public class ZarrPixelBuffer implements PixelBuffer {
         int originalZIndex = 1;
         if (axesOrder.containsKey(Axis.Z)) {
             originalZIndex = offset[axesOrder.get(Axis.Z)];
+            if (getSizeZ() != getTrueSizeZ()) {
+                offset[axesOrder.get(Axis.Z)] = zIndexMap.get(originalZIndex);
+                planes = shape[axesOrder.get(Axis.Z)];
+                shape[axesOrder.get(Axis.Z)] = 1;
+            }
         }
-        if (getSizeZ() != getTrueSizeZ()) {
-            offset[axesOrder.get(Axis.Z)] = zIndexMap.get(originalZIndex);
-            planes = shape[axesOrder.get(Axis.Z)];
-            shape[axesOrder.get(Axis.Z)] = 1;
-        }
-
         try {
             ByteBuffer asByteBuffer = ByteBuffer.wrap(buffer);
             DataType dataType = array.getDataType();
