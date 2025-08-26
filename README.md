@@ -34,7 +34,7 @@ The Zarr multiscales group must be conformant with the default layout generated 
 -    the version of the NGFF specification must be 0.4
 -    the image and the Zarr multiscales group must have 5 declared dimensions
 -    the chunks must be stored in the (t, c, z, y, x) order
--    the resolution level must be downsampled along the (y, x) axis
+-    the resolution levels must be downsampled along the (y, x) axis by a factor 2
 
 For Zarr data hosted on AWS S3, requests must supply
 [credentials](https://docs.aws.amazon.com/sdk-for-java/v1/developer-guide/credentials.html).
