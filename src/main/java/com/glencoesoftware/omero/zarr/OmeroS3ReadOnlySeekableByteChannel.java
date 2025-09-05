@@ -15,9 +15,14 @@
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
+
 package com.glencoesoftware.omero.zarr;
 
-
+import com.amazonaws.services.s3.model.GetObjectRequest;
+import com.amazonaws.services.s3.model.S3Object;
+import com.amazonaws.services.s3.model.S3ObjectInputStream;
+import com.upplication.s3fs.S3Path;
+import com.upplication.s3fs.S3ReadOnlySeekableByteChannel;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -32,14 +37,8 @@ import java.nio.file.StandardOpenOption;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
-
 import org.perf4j.slf4j.Slf4JStopWatch;
 
-import com.amazonaws.services.s3.model.GetObjectRequest;
-import com.amazonaws.services.s3.model.S3Object;
-import com.amazonaws.services.s3.model.S3ObjectInputStream;
-import com.upplication.s3fs.S3Path;
-import com.upplication.s3fs.S3ReadOnlySeekableByteChannel;
 
 /**
  * Overridden, hybrid version of the implementation from
@@ -61,15 +60,15 @@ public class OmeroS3ReadOnlySeekableByteChannel implements SeekableByteChannel {
      * entire object in full from S3 without checks for length during
      * object construction.
      */
-    public OmeroS3ReadOnlySeekableByteChannel(S3Path path, Set<? extends OpenOption> options) throws IOException {
+    public OmeroS3ReadOnlySeekableByteChannel(S3Path path, Set<? extends OpenOption> options)
+          throws IOException {
         this.options = Collections.unmodifiableSet(new HashSet<>(options));
 
-        if (
-            this.options.contains(StandardOpenOption.WRITE) ||
-            this.options.contains(StandardOpenOption.CREATE) ||
-            this.options.contains(StandardOpenOption.CREATE_NEW) ||
-            this.options.contains(StandardOpenOption.APPEND)
-        ) {
+        if (this.options.contains(StandardOpenOption.WRITE)
+                || this.options.contains(StandardOpenOption.CREATE)
+                || this.options.contains(StandardOpenOption.CREATE_NEW)
+                || this.options.contains(StandardOpenOption.APPEND)
+            ) {
             throw new ReadOnlyFileSystemException();
         }
 
@@ -92,10 +91,10 @@ public class OmeroS3ReadOnlySeekableByteChannel implements SeekableByteChannel {
             // the stream closed as quickly as possible. See
             // https://docs.aws.amazon.com/AWSJavaSDK/latest/javadoc/com/amazonaws/services/s3/model/S3Object.html#getObjectContent--
             try (S3ObjectInputStream s3Stream = s3Object.getObjectContent()) {
-                byte[] read_buf = new byte[1024*1024];
-                int read_len = 0;
-                while ((read_len = s3Stream.read(read_buf)) > 0) {
-                    outputStream.write(read_buf, 0, read_len);
+                byte[] readBuf = new byte[1024 * 1024];
+                int readLen = 0;
+                while ((readLen = s3Stream.read(readBuf)) > 0) {
+                    outputStream.write(readBuf, 0, readLen);
                 }
             }
             this.data = outputStream.toByteArray();
@@ -124,7 +123,9 @@ public class OmeroS3ReadOnlySeekableByteChannel implements SeekableByteChannel {
      * private visibility.
      */
     @Override
-    public long position() { return position; }
+    public long position() {
+        return position;
+    }
 
     /**
      * Overridden, hybrid version of the implementation from
@@ -133,8 +134,7 @@ public class OmeroS3ReadOnlySeekableByteChannel implements SeekableByteChannel {
      */
     @Override
     public SeekableByteChannel position(long targetPosition)
-            throws IOException
-    {
+            throws IOException {
         throw new UnsupportedOperationException();
     }
 

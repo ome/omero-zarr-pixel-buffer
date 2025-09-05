@@ -15,14 +15,8 @@
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
+
 package com.glencoesoftware.omero.zarr;
-
-import java.net.URI;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Properties;
-
-import org.slf4j.LoggerFactory;
 
 import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.auth.AWSCredentialsProviderChain;
@@ -36,7 +30,15 @@ import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.amazonaws.util.AwsHostNameUtils;
 import com.upplication.s3fs.AmazonS3ClientFactory;
+import java.net.URI;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Properties;
+import org.slf4j.LoggerFactory;
 
+/**
+ * Subclass which maps an URI into a set of credentials to use for the client.
+ */
 public class OmeroAmazonS3ClientFactory extends AmazonS3ClientFactory {
 
     private static final org.slf4j.Logger log =
@@ -48,11 +50,11 @@ public class OmeroAmazonS3ClientFactory extends AmazonS3ClientFactory {
     protected AWSCredentialsProvider getCredentialsProvider(Properties props) {
         // If AWS Environment or System Properties are set, throw an exception
         // so users will know they are not supported
-        if (System.getenv("AWS_ACCESS_KEY_ID") != null ||
-                System.getenv("AWS_SECRET_ACCESS_KEY") != null ||
-                System.getenv("AWS_SESSION_TOKEN") != null ||
-                System.getProperty("aws.accessKeyId") != null ||
-                System.getProperty("aws.secretAccessKey") != null) {
+        if (System.getenv("AWS_ACCESS_KEY_ID") != null
+                || System.getenv("AWS_SECRET_ACCESS_KEY") != null
+                || System.getenv("AWS_SESSION_TOKEN") != null
+                || System.getProperty("aws.accessKeyId") != null
+                || System.getProperty("aws.secretAccessKey") != null) {
             throw new RuntimeException("AWS credentials supplied by environment variables"
                     + " or Java system properties are not supported."
                     + " Please use either named profiles or instance"
@@ -77,6 +79,7 @@ public class OmeroAmazonS3ClientFactory extends AmazonS3ClientFactory {
     
     /**
      * Retrieves the bucket name from a given URI.
+     *
      * @param uri The URI to handle
      * @return The bucket name
      */
@@ -90,6 +93,7 @@ public class OmeroAmazonS3ClientFactory extends AmazonS3ClientFactory {
 
     /**
      * Retrieves the region from a given URI.
+     *
      * @param uri The URI to handle
      * @return The region
      */
@@ -103,6 +107,7 @@ public class OmeroAmazonS3ClientFactory extends AmazonS3ClientFactory {
 
     /**
      * Retrieves the endpoint from a given URI.
+     *
      * @param uri The URI to handle
      * @return The endpoint
      */
@@ -112,7 +117,7 @@ public class OmeroAmazonS3ClientFactory extends AmazonS3ClientFactory {
 
     @Override
     public synchronized AmazonS3 getAmazonS3(URI uri, Properties props) {
-        //Check if we have a S3 client for this bucket
+        // Check if we have a S3 client for this bucket
         String bucket = getBucketFromUri(uri);
         if (bucketClientMap.containsKey(bucket)) {
             log.info("Found bucket " + bucket);
@@ -120,11 +125,12 @@ public class OmeroAmazonS3ClientFactory extends AmazonS3ClientFactory {
         }
         log.info("Creating client for bucket " + bucket);
         AmazonS3 client = AmazonS3ClientBuilder.standard()
-                            .withCredentials(getCredentialsProvider(props))
-                            .withClientConfiguration(getClientConfiguration(props))
-                            .withMetricsCollector(getRequestMetricsCollector(props))
-                            .withEndpointConfiguration(new EndpointConfiguration(getEndPointFromUri(uri), getRegionFromUri(uri)))
-                            .build();
+            .withCredentials(getCredentialsProvider(props))
+            .withClientConfiguration(getClientConfiguration(props))
+            .withMetricsCollector(getRequestMetricsCollector(props))
+            .withEndpointConfiguration(
+                new EndpointConfiguration(getEndPointFromUri(uri), getRegionFromUri(uri)))
+            .build();
         bucketClientMap.put(bucket, client);
         return client;
     }
