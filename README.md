@@ -92,5 +92,5 @@ Run the Gradle build including the tests
 
 ## License
 
-The converter is distributed under the terms of the GPL license. Please see [LICENSE.txt](LICENSE.txt)
-for further details.
+OMERO Zarr pixel buffer is distributed under the terms of the GPL license.
+Please see [LICENSE.txt](LICENSE.txt) for further details.
