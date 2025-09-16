@@ -18,8 +18,8 @@ The OMERO Zarr pixel buffer follows the principles of a classical OMERO.server
 It can be included in an OMERO deployment:
 
 -   either by adding the JAR file and all its dependencies (`jzarr`, `caffeine`,
-    `s3fs`,  `aws-java-sdk-s3`, `tika-core`) to the `lib/server` directory
-    of a  OMERO.server binary and restarting the server,
+    `s3fs`,  `aws-java-sdk-s3`, `tika-core`) under the `lib/server` directory
+    of OMERO.server and restarting the server,
 
 -   or by building a modified version of the OMERO.server binary after declaring
     `com.glencoesoftware.omero:omero-zarr-pixel-buffer` as a dependency of the
@@ -38,8 +38,8 @@ and meeting the following requirements:
     (c, y, x), (z, y, x), (t, c, y, x), (t, z, y, x), (c, z, y, x) and
     (t, c, z, y, x)
 -   the resolution levels must be downsampled alongside the spatial dimensions,
-    either alongside the (y, x) axis or alongside the (z, y, x) axis
--   the scaling factor alongside both the y and the x axis between successive resolution
+    either alongside the (y, x) or the (z, y, x) axes
+-   the scaling factor alongside both the y and the x axes between successive resolution
     levels must be equal to two
 
 An OMERO Image or Mask object can be associated to Zarr by setting its
