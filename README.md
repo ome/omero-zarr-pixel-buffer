@@ -53,7 +53,7 @@ with the following properties:
      or the [label](https://ngff.openmicroscopy.org/0.4/#label-md) image:
 
     - either the absolute path to the multiscales group if the Zarr is stored on
-      the filesystem e.g. `/data/CMU-1.ome.zarr/0`
+      the filesystem e.g. `/data/CMU-1.ome.zarr/0`,
     - or the URI specifying the location of the multiscales group if the Zarr is
       stored on AWS S3 or S3 compatible storage. The location must be specified
       as `s3://<endpoint>/<bucket>/<prefix>` where `<endpoint>` is the S3
@@ -81,6 +81,11 @@ To read public Zarr data hosted on S3 using anonymous (unsigned) requests, the
 `anonymous=true` query parameter must be appended to the location URI e.g.
 `s3://s3.us-east-1.amazonaws.com/gs-public-zarr-archive/CMU-1.ome.zarr/0?anonymous=true`.
 Note `profile` and `anonymous` are mutually incompatible query parameters.
+
+The ExternalInfo of an Image or a Mask can be accessed and set using the
+[OMERO API](https://omero.readthedocs.io/en/stable/developers/Modules/Api.html) directly, the
+OMERO CLI (`omero obj [ext-info-set|ext-info-get]`) or a client including the
+functionality to import OME-Zarr labels and/or images.
 
 ## Development
 
