@@ -50,7 +50,7 @@ with the following properties:
 -   `entityId` must be set to `3`
 -   `lsid` must be set to the path of the Zarr group describing the
      [multiscales](https://ngff.openmicroscopy.org/0.4/#multiscale-md) image
-     or label image:
+     or the [label](https://ngff.openmicroscopy.org/0.4/#label-md) image:
 
     - either the absolute path to the multiscales group if the Zarr is stored on
       the filesystem e.g. `/data/CMU-1.ome.zarr/0`
@@ -59,8 +59,10 @@ with the following properties:
       as `s3://<endpoint>/<bucket>/<prefix>` where `<endpoint>` is the S3
       endpoint - see https://docs.aws.amazon.com/general/latest/gr/s3.html#s3_region
       for the list of the regional AWS S3 endpoints, <bucket> is the bucket name
-      and `<prefix>` is the prefix to the Zarr multiscales group e.g.
-      `s3://s3.us-east-1.amazonaws.com/gs-public-zarr-archive/CMU-1.ome.zarr/0`
+      and `<prefix>` is the prefix to the Zarr group containing the multiscales image
+      e.g. `s3://s3.us-east-1.amazonaws.com/gs-public-zarr-archive/CMU-1.ome.zarr/0`.
+      The URI stored in the `lsid` attribute must be percent-encoded as defined in
+      [RFC3986](https://datatracker.ietf.org/doc/html/rfc3986).
 
 When reading Zarr data from a S3 location, the pixel buffer will look for
 [credentials](https://docs.aws.amazon.com/sdk-for-java/v1/developer-guide/credentials.html)
