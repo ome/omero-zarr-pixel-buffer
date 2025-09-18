@@ -132,61 +132,6 @@ public class ZarrPixelsService extends ome.io.nio.PixelsService {
     }
 
     /**
-     * Converts an NGFF root string to a path, initializing a {@link FileSystem}
-     * if required.
-     *
-     * @param ngffDir NGFF directory root
-     * @return Fully initialized path or <code>null</code> if the NGFF root
-     *     directory has not been specified in configuration.
-     */
-    public static Path asPath(String ngffDir) throws IOException {
-        if (ngffDir.isEmpty()) {
-            return null;
-        }
-
-        try {
-            URI uri = new URI(ngffDir);
-            if ("s3".equals(uri.getScheme())) {
-                if (uri.getUserInfo() != null && !uri.getUserInfo().isEmpty()) {
-                    throw new RuntimeException(
-                        "Found unsupported user information in S3 URI."
-                        + " If you are trying to pass S3 credentials, "
-                        + "use either named profiles or instance credentials.");
-                }
-                String query = Optional.ofNullable(uri.getQuery()).orElse("");
-                Map<String, String> params = Splitter.on('&')
-                        .trimResults()
-                        .omitEmptyStrings()
-                        .withKeyValueSeparator('=')
-                        .split(query);
-                // drop initial "/"
-                String uriPath = uri.getPath().substring(1);
-                int first = uriPath.indexOf("/");
-                String bucket = "/" + uriPath.substring(0, first);
-                String rest = uriPath.substring(first + 1);
-                // FIXME: We might want to support additional S3FS settings in
-                // the future.  See:
-                //   * https://github.com/lasersonlab/Amazon-S3-FileSystem-NIO2
-                Map<String, String> env = new HashMap<String, String>();
-                String profile = params.get("profile");
-                if (profile != null) {
-                    env.put("s3fs_credential_profile_name", profile);
-                }
-                String anonymous =
-                        Optional.ofNullable(params.get("anonymous"))
-                                .orElse("false");
-                env.put("s3fs_anonymous", anonymous);
-                OmeroS3FilesystemProvider fsp = new OmeroS3FilesystemProvider();
-                FileSystem fs = fsp.newFileSystem(uri, env);
-                return fs.getPath(bucket, rest);
-            }
-        } catch (URISyntaxException e) {
-            // Fall through
-        }
-        return Paths.get(ngffDir);
-    }
-
-    /**
      * Retrieve {@link Mask} or {@link Image} URI stored under {@link ExternalInfo}.
      *
      * @param object loaded {@link Mask} or {@link Image} to check for a URI
