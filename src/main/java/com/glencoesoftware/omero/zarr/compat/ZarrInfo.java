@@ -1,11 +1,11 @@
 package com.glencoesoftware.omero.zarr.compat;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.file.FileSystem;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -15,7 +15,6 @@ import org.slf4j.LoggerFactory;
 
 import org.apache.maven.artifact.versioning.ComparableVersion;
 
-import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.bc.zarr.ZarrGroup;
 import com.google.common.base.Splitter;
 import com.upplication.s3fs.OmeroS3FilesystemProvider;
@@ -49,9 +48,18 @@ public class ZarrInfo {
 
     private String location;
 
-    private boolean remote;
+    /**
+     * Enum representing different storage types for Zarr data.
+     */
+    public enum StorageType {
+        FILE,
+        S3,
+        HTTP
+    }
 
-    public ZarrInfo(String location) {
+    private StorageType storageType;
+
+    public ZarrInfo(String location) throws IOException {
         this.location = location.endsWith("/") ? location.substring(0, location.length() - 1) : location;
         checkProperties();
     }
@@ -59,18 +67,47 @@ public class ZarrInfo {
     /**
      * Tries to check some properties of the zarr path,
      * if it's remote or local, and the zarr and ngff versions.
+     * @throws IOException 
      */
-    private void checkProperties() {
-        this.remote = location.toLowerCase().startsWith("http://") ||
-                location.toLowerCase().startsWith("https://") ||
-                location.toLowerCase().startsWith("s3://");
+    private void checkProperties() throws IOException {
+        URI uri;
+        try {
+            uri = new URI(location);
+        } catch (URISyntaxException e) {
+            throw new IOException("Invalid URI: " + location, e);
+        }
+
+        if (uri.getScheme() == null || "file".equals(uri.getScheme().toLowerCase())) {
+            File test = new File(location);
+            if (!test.isDirectory()) {
+                throw new IOException("Not a directory: " + location);
+            }
+            if (!test.canRead()) {
+                throw new IOException("Cannot read directory: " + location);
+            }
+            storageType = StorageType.FILE;
+        } else {
+            String scheme = uri.getScheme().toLowerCase();
+            if (scheme.equals("http") || scheme.equals("https")) {
+                storageType = StorageType.HTTP;
+            } else if (scheme.equals("s3")) {
+                storageType = StorageType.S3;
+            } else {
+                throw new IOException("Unsupported scheme: " + scheme);
+            }
+        }
 
         // checking for zarr v2
         try {
             Map<String, Object> attr = ZarrGroup.open(asPath(location)).getAttributes();
             zarrVersion = new ComparableVersion("2"); // if that works it must be v2
-            List<Object> tmp = (List<Object>) attr.get("multiscales");
-            ngffVersion = new ComparableVersion(((Map<String, Object>) tmp.get(0)).get("version").toString());
+            try {
+                List<Object> tmp = (List<Object>) attr.get("multiscales");
+                ngffVersion = new ComparableVersion(((Map<String, Object>) tmp.get(0)).get("version").toString());
+            } catch (Exception e) {
+                log.debug("Failed to get ngff version from zarr, set to 0.4");
+                ngffVersion = new ComparableVersion("0.4"); // if it's zarr v2 then we can actually safely assume it's ngff v0.4
+            }
             return;
         } catch (Exception e) {
             // fall through
@@ -80,32 +117,19 @@ public class ZarrInfo {
         try {
             StoreHandle sh = asStoreHandle();
             GroupMetadata md = Group.open(sh).metadata;
-            if (md.attributes.containsKey("zarr_format")) {
-                zarrVersion = new ComparableVersion(md.attributes.get("zarr_format").toString());
-            } else {
-                zarrVersion = new ComparableVersion("3");
+            zarrVersion = new ComparableVersion("3");  // if that works it should be v3
+            try {
+                ngffVersion = new ComparableVersion(((Map<String, Object>) md.attributes.get("ome")).get("version").toString());
+            } catch (Exception e) {
+                log.debug("Failed to get ngff version from zarr, set to 0.5");
+                ngffVersion = new ComparableVersion("0.5");
             }
-            ngffVersion = new ComparableVersion(((Map<String, Object>) md.attributes.get("ome")).get("version").toString());
         } catch (Exception e) {
             // fall through
         }
 
-        // set reasonable defaults
         if (zarrVersion == null) {
-            if (ngffVersion != null && ngffVersion.compareTo(NGFF_V0_4) > 0) {
-                zarrVersion = new ComparableVersion("3");
-            } else {
-                zarrVersion = new ComparableVersion("2");
-            }
-            log.warn("No zarr version found, default to " + zarrVersion);
-        }
-        if (ngffVersion == null) {
-            if (zarrVersion != null && zarrVersion.compareTo(ZARR_V2) > 0) {
-                ngffVersion = new ComparableVersion("0.5");
-            } else {
-                ngffVersion = new ComparableVersion("0.4");
-            }
-            log.warn("No NGFF version found, default to " + ngffVersion);
+            throw new IOException("Failed to determine zarr version");
         }
     }
 
@@ -135,15 +159,12 @@ public class ZarrInfo {
 
     public ZarrPath getZarrPath() throws IOException {
         if (zarrVersion.equals(ZARR_V2)) {
-            return new ZarrPathv2(asPath());
+            return new ZarrPathv2(asPath(location));
         } else {
             return new ZarrPathv3(asStoreHandle());
         }
     }
 
-    private Path asPath() throws IOException {
-        return asPath(location);
-    }
     /**
      * Converts an NGFF root string to a path, initializing a {@link FileSystem}
      * if required
@@ -155,7 +176,12 @@ public class ZarrInfo {
     private Path asPath(String location) throws IOException {
         try {
             URI uri = new URI(location);
-            if ("s3".equals(uri.getScheme())) {
+            String scheme = uri.getScheme() != null ? uri.getScheme().toLowerCase() : "file";
+            if (scheme.startsWith("http")) {
+                String s3loc = location.replaceFirst("https?", "s3");
+                return asPath(s3loc+"?anonymous=true");
+            }
+            if (scheme.equals("s3")) {
                 if (uri.getUserInfo() != null && !uri.getUserInfo().isEmpty()) {
                     throw new RuntimeException(
                         "Found unsupported user information in S3 URI."
@@ -190,17 +216,9 @@ public class ZarrInfo {
                 return fs.getPath(bucket, rest);
             }
         } catch (URISyntaxException e) {
-            // Fall through
+            // we made sure earlier that location is a valid URI
         }
-        return Paths.get(location);
-    }
-
-    /**
-     * Checks if this is a remote store.
-     * @return true if remote, false if local
-     */
-    public boolean isRemote() {
-        return remote;
+        return Path.of(location);
     }
 
     /**
@@ -209,31 +227,39 @@ public class ZarrInfo {
      * @return
      */
     private StoreHandle asStoreHandle() {
-        //TODO: Properly parse the URI to get store/endpoint, bucket, etc.
+        try {
+            URI uri = new URI(location);
+            String scheme = uri.getScheme() != null ? uri.getScheme().toLowerCase() : "file";
+            String store = location.substring(0, location.lastIndexOf("/"));
+            String zarr = location.substring(location.lastIndexOf("/")+1);
 
-        if (location.toLowerCase().startsWith("http://") || location.toLowerCase().startsWith("https://")) {
-            String store = location.substring(0, location.lastIndexOf("/"));
-            String zarr = location.substring(location.lastIndexOf("/")+1);
-            return new HttpStore(store).resolve(zarr);
+            if (scheme.startsWith("http")) {
+                return new HttpStore(store).resolve(zarr);
+            }
+            else if (scheme.startsWith("s3")) {
+                // TODO: implement S3Store
+                return new S3Store(null, null, null).resolve(zarr);
+            }
+            else {
+                return new FilesystemStore(store).resolve(zarr);
+            }
+        } catch (URISyntaxException e) {
+            // we checked earlier that location is a valid URI
         }
-        else if (location.toLowerCase().startsWith("s3://")) {
-            // TODO: This def won't work like that (see comment above)
-            String store = location.substring(0, location.lastIndexOf("/"));
-            String zarr = location.substring(location.lastIndexOf("/")+1);
-            return new S3Store(AmazonS3ClientBuilder.standard().build(), store, zarr).resolve("");
-        }
-        String store = location.substring(0, location.lastIndexOf("/"));
-        String zarr = location.substring(location.lastIndexOf("/")+1);
-        return new FilesystemStore(store).resolve(zarr);
+        return null;
     }
 
     @Override
     public String toString() {
         return "ZarrInfo{" +
                 "location='" + location + '\'' +
-                ", remote=" + remote +
+                ", storageType=" + storageType +
                 ", zarrVersion=" + zarrVersion +
                 ", ngffVersion=" + ngffVersion +
                 '}';
+    }
+
+    public StorageType getStorageType() {
+        return storageType;
     }
 }
