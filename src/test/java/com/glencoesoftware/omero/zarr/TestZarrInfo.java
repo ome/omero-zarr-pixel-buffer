@@ -10,6 +10,7 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
 import com.glencoesoftware.omero.zarr.compat.ZarrInfo;
+import com.glencoesoftware.omero.zarr.compat.ZarrInfo.StorageType;
 
 public class TestZarrInfo {
     
@@ -17,17 +18,35 @@ public class TestZarrInfo {
     public TemporaryFolder tmpDir = new TemporaryFolder();
 
     @Test
-    public void testZarrInfo() throws IOException {
+    public void testLocalV2N04() throws IOException {
         String v0_4_local = writeTestZarr(1,1,1,256,256,"uint8",1).toString()+"/0";
-        String v0_5_http = "https://uk1s3.embassy.ebi.ac.uk/idr/share/ome2024-ngff-challenge/0.0.5/6001240_labels.zarr";
     
         ZarrInfo zp = new ZarrInfo(v0_4_local);
-        Assert.assertFalse(zp.isRemote());
+        Assert.assertEquals(zp.getStorageType(), StorageType.FILE);
         Assert.assertEquals(new ComparableVersion("2"), zp.getZarrVersion());
         Assert.assertEquals(new ComparableVersion("0.4"), zp.getNgffVersion());
+    }
 
-        zp = new ZarrInfo(v0_5_http);
-        Assert.assertTrue(zp.isRemote());
+    @Test
+    public void testHTTPV2N04() throws IOException {
+        ZarrInfo zp = new ZarrInfo("https://uk1s3.embassy.ebi.ac.uk/idr/zarr/v0.4/idr0101A/13457227.zarr");
+        Assert.assertEquals(zp.getStorageType(), StorageType.HTTP);
+        Assert.assertEquals(new ComparableVersion("2"), zp.getZarrVersion());
+        Assert.assertEquals(new ComparableVersion("0.4"), zp.getNgffVersion());
+    }
+
+    @Test
+    public void testS3V2N04() throws IOException {
+        ZarrInfo zp = new ZarrInfo("s3://s3.us-east-1.amazonaws.com/gs-public-zarr-archive/CMU-1.ome.zarr/0?anonymous=true");
+        Assert.assertEquals(zp.getStorageType(), StorageType.S3);
+        Assert.assertEquals(new ComparableVersion("2"), zp.getZarrVersion());
+        Assert.assertEquals(new ComparableVersion("0.4"), zp.getNgffVersion());
+    }
+
+    @Test
+    public void testHTTPV3N05() throws IOException {
+        ZarrInfo zp = new ZarrInfo("https://uk1s3.embassy.ebi.ac.uk/idr/share/ome2024-ngff-challenge/0.0.5/6001240_labels.zarr");
+        Assert.assertEquals(zp.getStorageType(), StorageType.HTTP);
         Assert.assertEquals(new ComparableVersion("3"), zp.getZarrVersion());
         Assert.assertEquals(new ComparableVersion("0.5"), zp.getNgffVersion());
     }
