@@ -46,7 +46,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.glencoesoftware.bioformats2raw.Converter;
 import com.glencoesoftware.omero.zarr.compat.ZarrInfo;
-import com.glencoesoftware.omero.zarr.compat.ZarrPath;
 
 import loci.formats.FormatTools;
 import loci.formats.in.FakeReader;
