@@ -18,6 +18,10 @@
 
 package com.glencoesoftware.omero.zarr;
 
+import com.bc.zarr.DataType;
+import com.bc.zarr.ZarrArray;
+import com.github.benmanes.caffeine.cache.AsyncLoadingCache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import java.awt.Dimension;
 import java.io.IOException;
 import java.nio.BufferOverflowException;
@@ -31,22 +35,18 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.IntStream;
-
-import org.slf4j.LoggerFactory;
-
-import com.bc.zarr.DataType;
-import com.bc.zarr.ZarrArray;
-import com.github.benmanes.caffeine.cache.AsyncLoadingCache;
-import com.github.benmanes.caffeine.cache.Caffeine;
-
 import loci.formats.FormatTools;
 import ome.io.nio.DimensionsOutOfBoundsException;
 import ome.io.nio.PixelBuffer;
 import ome.io.nio.RomioPixelBuffer;
 import ome.model.core.Pixels;
 import ome.util.PixelData;
+import org.slf4j.LoggerFactory;
 import ucar.ma2.InvalidRangeException;
 
+/**
+ * Subclass of ome.io.nio.PixelBuffer handling OME-Zarr data.
+ **/
 public class ZarrPixelBuffer implements PixelBuffer {
 
     private static final org.slf4j.Logger log =
@@ -55,25 +55,25 @@ public class ZarrPixelBuffer implements PixelBuffer {
     /** Reference to the pixels. */
     private final Pixels pixels;
 
-    /** Root of the OME-NGFF multiscale we are operating on */
+    /** Root of the OME-NGFF multiscale we are operating on. */
     private final Path root;
 
-    /** Requested resolution level */
+    /** Requested resolution level. */
     private int resolutionLevel;
 
-    /** Total number of resolution levels */
+    /** Total number of resolution levels. */
     private final int resolutionLevels;
 
-    /** Max Plane Width */
+    /** Max Plane Width. */
     private final Integer maxPlaneWidth;
 
-    /** Max Plane Height */
+    /** Max Plane Height. */
     private final Integer maxPlaneHeight;
 
-    /** Zarr attributes present on the root group */
+    /** Zarr attributes present on the root group. */
     private final Map<String, Object> rootGroupAttributes;
 
-    /** Zarr array corresponding to the current resolution level */
+    /** Zarr array corresponding to the current resolution level. */
     private ZarrArray array;
 
     /**
@@ -82,34 +82,32 @@ public class ZarrPixelBuffer implements PixelBuffer {
      */
     private Map<Integer, Integer> zIndexMap;
 
-    /** { resolutionLevel, z, c, t, x, y, w, h } vs. tile byte array cache */
+    /** { resolutionLevel, z, c, t, x, y, w, h } vs. tile byte array cache. */
     private final AsyncLoadingCache<List<Integer>, byte[]> tileCache;
 
-    /** Whether or not the Zarr is on S3 or similar */
+    /** Whether or not the Zarr is on S3 or similar. */
     private final boolean isRemote;
 
-    /** Root path vs. metadata cache */
+    /** Root path vs. metadata cache. */
     private final
         AsyncLoadingCache<Path, Map<String, Object>> zarrMetadataCache;
 
-    /** Array path vs. ZarrArray cache */
+    /** Array path vs. ZarrArray cache. */
     private final AsyncLoadingCache<Path, ZarrArray> zarrArrayCache;
 
-    /** Supported axes, X and Y are essential */
+    /** Supported axes, X and Y are essential. */
     public enum Axis {
         X, Y, Z, C, T;
     }
 
-    /** Maps axes to their corresponding indexes */
+    /** Maps axes to their corresponding indexes. */
     private Map<Axis, Integer> axesOrder;
 
     /**
-     * Default constructor
+     * Default constructor.
+     *
      * @param pixels Pixels metadata for the pixel buffer
      * @param root The root of this buffer
-     * @param maxTileLength Maximum tile length that can be used during
-     * read operations
-     * @throws IOException
      */
     public ZarrPixelBuffer(Pixels pixels, Path root, Integer maxPlaneWidth,
             Integer maxPlaneHeight,
@@ -121,10 +119,10 @@ public class ZarrPixelBuffer implements PixelBuffer {
         this.root = root;
         this.zarrMetadataCache = zarrMetadataCache;
         this.zarrArrayCache = zarrArrayCache;
-        this.isRemote = root.toString().startsWith("s3://")? true : false;
+        this.isRemote = root.toString().startsWith("s3://") ? true : false;
         try {
             rootGroupAttributes = this.zarrMetadataCache.get(this.root).get();
-        } catch (ExecutionException|InterruptedException e) {
+        } catch (ExecutionException | InterruptedException e) {
             throw new IOException(e);
         }
         if (!rootGroupAttributes.containsKey("multiscales")) {
@@ -162,6 +160,7 @@ public class ZarrPixelBuffer implements PixelBuffer {
 
     /**
      * Get Bio-Formats/OMERO pixels type for buffer.
+     *
      * @return See above.
      */
     public int getPixelsType() {
@@ -191,11 +190,11 @@ public class ZarrPixelBuffer implements PixelBuffer {
 
     /**
      * Calculates the pixel length of a given NumPy like "shape".
+     *
      * @param shape the NumPy like "shape" to calculate the length of
      * @return See above
-     * @see <a href=
-     * "https://numpy.org/doc/stable/reference/generated/numpy.shape.html">
-     * numpy.shape</a> documentation
+     * @see <a href="https://numpy.org/doc/stable/reference/generated/numpy.shape.html">numpy.shape</a>
+     *     documentation
      */
     private long length(int[] shape) {
         return IntStream.of(shape)
@@ -269,7 +268,7 @@ public class ZarrPixelBuffer implements PixelBuffer {
                     default:
                         throw new IllegalArgumentException(
                                 "Data type " + dataType + " not supported");
-                  }
+                }
             }
         } catch (InvalidRangeException e) {
             log.error("Error reading Zarr data", e);
@@ -294,8 +293,8 @@ public class ZarrPixelBuffer implements PixelBuffer {
     /**
      * Retrieves the array chunk sizes of all subresolutions of this multiscale
      * buffer.
+     *
      * @return See above.
-     * @throws IOException
      */
     public int[][] getChunks() throws IOException {
         List<Map<String, String>> datasets = getDatasets();
@@ -312,6 +311,7 @@ public class ZarrPixelBuffer implements PixelBuffer {
     /**
      * Retrieves the datasets metadata of the first multiscale from the root
      * group attributes.
+     *
      * @return See above.
      * @see #getRootGroupAttributes()
      * @see #getMultiscalesMetadata()
@@ -322,7 +322,8 @@ public class ZarrPixelBuffer implements PixelBuffer {
     }
 
     /**
-     * Retrieves the axes order of the first multiscale
+     * Retrieves the axes order of the first multiscale.
+     *
      * @return See above.
      */
     public Map<Axis, Integer> getAxesOrder() {
@@ -330,7 +331,8 @@ public class ZarrPixelBuffer implements PixelBuffer {
             return axesOrder;
         }
         axesOrder = new HashMap<Axis, Integer>();
-        List<Map<String, Object>> axesData = (List<Map<String, Object>>) getMultiscalesMetadata().get(0).get("axes");
+        List<Map<String, Object>> axesData =
+            (List<Map<String, Object>>) getMultiscalesMetadata().get(0).get("axes");
         if (axesData == null) {
             log.warn("No axes metadata found, defaulting to standard axes TCZYX");
             axesOrder.put(Axis.T, 0);
@@ -345,7 +347,8 @@ public class ZarrPixelBuffer implements PixelBuffer {
                 try {
                     axesOrder.put(Axis.valueOf(name), i);
                 } catch (IllegalArgumentException e) {
-                    throw new IllegalArgumentException("Invalid axis name (only T,C,Z,Y,X are supported): " + name);
+                    throw new IllegalArgumentException(
+                        "Invalid axis name (only T,C,Z,Y,X are supported): " + name);
                 }
             }
         }
@@ -357,6 +360,7 @@ public class ZarrPixelBuffer implements PixelBuffer {
 
     /**
      * Retrieves the multiscales metadata from the root group attributes.
+     *
      * @return See above.
      * @see #getRootGroupAttributes()
      * @see #getDatasets()
@@ -368,6 +372,7 @@ public class ZarrPixelBuffer implements PixelBuffer {
 
     /**
      * Returns the current Zarr root group attributes for this buffer.
+     *
      * @return See above.
      * @see #getMultiscalesMetadata()
      * @see #getDatasets()
@@ -385,6 +390,7 @@ public class ZarrPixelBuffer implements PixelBuffer {
 
     /**
      * Implemented as specified by {@link PixelBuffer} I/F.
+     *
      * @see PixelBuffer#checkBounds(Integer, Integer, Integer, Integer, Integer)
      */
     @Override
@@ -416,6 +422,9 @@ public class ZarrPixelBuffer implements PixelBuffer {
         }
     }
 
+    /**
+     * Checks the shape to read does not exceed the maximum plane size.
+     **/
     public void checkReadSize(int[] shape) {
         long length = length(shape);
         long maxLength = maxPlaneWidth * maxPlaneHeight;
@@ -522,14 +531,14 @@ public class ZarrPixelBuffer implements PixelBuffer {
             Integer z, Integer c, Integer t, Integer x, Integer y,
             Integer w, Integer h)
                     throws IOException {
-        //Check origin indices > 0
+        // Check origin indices > 0
         checkBounds(x, y, z, c, t);
-        //Check check bottom-right of tile in bounds
+        // Check check bottom-right of tile in bounds
         checkBounds(x + w - 1, y + h - 1, z, c, t);
-        //Check planar read size (sizeX and sizeY only), essential that this
-        //happens before the similar check in read().  Otherwise we will
-        //potentially allocate massive inner buffers in the tile cache
-        //asynchronous entry builder that will never be used.
+        // Check planar read size (sizeX and sizeY only), essential that this
+        // happens before the similar check in read().  Otherwise we will
+        // potentially allocate massive inner buffers in the tile cache
+        // asynchronous entry builder that will never be used.
         checkReadSize(new int[] { w, h });
 
         List<List<Integer>> keys = new ArrayList<List<Integer>>();
@@ -537,7 +546,7 @@ public class ZarrPixelBuffer implements PixelBuffer {
         List<Integer> channels = Arrays.asList(new Integer[] { c });
         if (getSizeC() == 3 && isRemote) {
             // Guessing that we are in RGB mode
-            channels = Arrays.asList(new Integer[] { 0, 1 ,2 });
+            channels = Arrays.asList(new Integer[] { 0, 1, 2 });
         }
         for (Integer channel : channels) {
             List<Integer> v = Arrays.asList(
@@ -561,9 +570,9 @@ public class ZarrPixelBuffer implements PixelBuffer {
             Integer z, Integer c, Integer t, Integer x, Integer y,
             Integer w, Integer h, byte[] buffer) throws IOException {
         try {
-            //Check origin indices > 0
+            // Check origin indices > 0
             checkBounds(x, y, z, c, t);
-            //Check check bottom-right of tile in bounds
+            // Check check bottom-right of tile in bounds
             checkBounds(x + w - 1, y + h - 1, z, c, t);
 
             int[] shape = new int[axesOrder.size()];
@@ -680,9 +689,9 @@ public class ZarrPixelBuffer implements PixelBuffer {
         int w = getSizeX();
         int h = getSizeY();
 
-        //Check origin indices > 0
+        // Check origin indices > 0
         checkBounds(x, y, z, c, t);
-        //Check check bottom-right of tile in bounds
+        // Check check bottom-right of tile in bounds
         checkBounds(x + w - 1, y + h - 1, z, c, t);
 
         int[] shape = new int[axesOrder.size()];
@@ -727,9 +736,9 @@ public class ZarrPixelBuffer implements PixelBuffer {
         int w = getSizeX();
         int h = getSizeY();
 
-        //Check origin indices > 0
+        // Check origin indices > 0
         checkBounds(x, y, z, c, t);
-        //Check check bottom-right of tile in bounds
+        // Check check bottom-right of tile in bounds
         checkBounds(x + w - 1, y + h - 1, z, c, t);
 
         int[] shape = new int[axesOrder.size()];
@@ -828,8 +837,8 @@ public class ZarrPixelBuffer implements PixelBuffer {
     @Override
     public byte[] calculateMessageDigest() throws IOException {
         throw new UnsupportedOperationException(
-                "Zarr pixel buffer does not support message digest " +
-                "calculation");
+            "Zarr pixel buffer does not support message digest "
+            + "calculation");
     }
 
     @Override
@@ -877,6 +886,8 @@ public class ZarrPixelBuffer implements PixelBuffer {
     }
 
     /**
+     * Returns the real Z size for the current resolution level.
+     *
      * @return Z size of the current underlying Zarr array
      */
     private int getTrueSizeZ() {
@@ -930,8 +941,7 @@ public class ZarrPixelBuffer implements PixelBuffer {
         
         if (zIndexMap == null) {
             zIndexMap = new HashMap<Integer, Integer>();
-        }
-        else {
+        } else {
             zIndexMap.clear();
         }
         try {
