@@ -210,9 +210,11 @@ public class ZarrPixelBufferTest {
         int sizeZ = 1;
         int sizeY = 512;
         int sizeX = 2048;
+        int resolutions = 3;
         Pixels pixels = new Pixels(null, null, sizeX, sizeY, sizeZ, sizeC, sizeT, "", null);
         Path output = writeTestZarr(
-            sizeT, sizeC, sizeZ, sizeY, sizeX, "uint16", "--resolutions", "3");
+            sizeT, sizeC, sizeZ, sizeY, sizeX, "uint16",
+            "--resolutions", String.valueOf(resolutions));
         try (ZarrPixelBuffer zpbuf =
                 createPixelBuffer(pixels, output.resolve("0"), 1024, 1024)) {
             int[][] chunks = zpbuf.getChunks();
@@ -232,18 +234,21 @@ public class ZarrPixelBufferTest {
         int sizeZ = 16;
         int sizeY = 512;
         int sizeX = 2048;
+        int resolutions = 4;
+        int chunkDepth = 16;
         Pixels pixels = new Pixels(null, null, sizeX, sizeY, sizeZ, sizeC, sizeT, "", null);
         Path output = writeTestZarr(
             sizeT, sizeC, sizeZ, sizeY, sizeX, "uint16",
-            "--resolutions", "4", "--chunk-depth", "16");
+            "--resolutions", String.valueOf(resolutions),
+            "--chunk-depth", String.valueOf(chunkDepth));
         try (ZarrPixelBuffer zpbuf =
                 createPixelBuffer(pixels, output.resolve("0"), 1024, 1024)) {
             int[][] chunks = zpbuf.getChunks();
             int[][] expectedChunks = new int[][] {
-                new int[] {1, 1, 16, 512, 1024},
-                new int[] {1, 1, 16, 256, 1024},
-                new int[] {1, 1, 16, 128, 512},
-                new int[] {1, 1, 16, 64, 256}
+                new int[] {1, 1, chunkDepth, 512, 1024},
+                new int[] {1, 1, chunkDepth, 256, 1024},
+                new int[] {1, 1, chunkDepth, 128, 512},
+                new int[] {1, 1, chunkDepth, 64, 256}
             };
             Assert.assertEquals(chunks, expectedChunks);
         }
@@ -256,14 +261,16 @@ public class ZarrPixelBufferTest {
         int sizeZ = 1;
         int sizeY = 512;
         int sizeX = 2048;
+        int resolutions = 3;
         Pixels pixels = new Pixels(null, null, sizeX, sizeY, sizeZ, sizeC, sizeT, "", null);
         Path output = writeTestZarr(
-            sizeT, sizeC, sizeZ, sizeY, sizeX, "uint16", "--resolutions", "3");
+            sizeT, sizeC, sizeZ, sizeY, sizeX, "uint16",
+            "--resolutions", String.valueOf(resolutions));
         try (ZarrPixelBuffer zpbuf =
                 createPixelBuffer(pixels, output.resolve("0"), 1024, 1024)) {
 
             List<Map<String, String>> datasets = zpbuf.getDatasets();
-            Assert.assertEquals(datasets.size(), 3);
+            Assert.assertEquals(datasets.size(), resolutions);
             for (int i = 0; i < datasets.size(); i++) {
                 Assert.assertEquals(datasets.get(i).get("path"), Integer.toString(i));
                 List<Map<String, Object>> transformations =
@@ -286,16 +293,18 @@ public class ZarrPixelBufferTest {
         int sizeZ = 3;
         int sizeY = 512;
         int sizeX = 2048;
+        int resolutions = 3;
         Pixels pixels = new Pixels(null, null, sizeX, sizeY, sizeZ, sizeC, sizeT, "", null);
         Path output = writeTestZarr(
-            sizeT, sizeC, sizeZ, sizeY, sizeX, "uint16", "--resolutions", "3");
+            sizeT, sizeC, sizeZ, sizeY, sizeX, "uint16",
+            "--resolutions", String.valueOf(resolutions));
         try (ZarrPixelBuffer zpbuf =
                 createPixelBuffer(pixels, output.resolve("0"), 1024, 1024)) {
             List<List<Integer>> expected = new ArrayList<List<Integer>>();
             expected.add(Arrays.asList(new Integer[] {2048, 512}));
             expected.add(Arrays.asList(new Integer[] {1024, 256}));
             expected.add(Arrays.asList(new Integer[] {512, 128}));
-            Assert.assertEquals(3, zpbuf.getResolutionLevels());
+            Assert.assertEquals(resolutions, zpbuf.getResolutionLevels());
             Assert.assertEquals(expected, zpbuf.getResolutionDescriptions());
 
             zpbuf.setResolutionLevel(0);
@@ -722,12 +731,14 @@ public class ZarrPixelBufferTest {
         int sizeZ = 1;
         int sizeY = 2048;
         int sizeX = 2048;
+        int resolutions = 3;
         Pixels pixels = new Pixels(null, null, sizeX, sizeY, sizeZ, sizeC, sizeT, "", null);
         Path output = writeTestZarr(
-            sizeT, sizeC, sizeZ, sizeY, sizeX, "uint16", "--resolutions", "3");
+            sizeT, sizeC, sizeZ, sizeY, sizeX, "uint16",
+            "--resolutions", String.valueOf(resolutions));
         try (ZarrPixelBuffer zpbuf =
                 createPixelBuffer(pixels, output.resolve("0"), 1024, 1024)) {
-            zpbuf.setResolutionLevel(3);
+            zpbuf.setResolutionLevel(resolutions);
         }
     }
 
@@ -741,7 +752,8 @@ public class ZarrPixelBufferTest {
         int resolutions = 3;
         Pixels pixels = new Pixels(null, null, sizeX, sizeY, sizeZ, sizeC, sizeT, "", null);
         Path output = writeTestZarr(
-            sizeT, sizeC, sizeZ, sizeY, sizeX, "uint8", "--resolutions", "3");
+            sizeT, sizeC, sizeZ, sizeY, sizeX, "uint8",
+            "--resolutions", String.valueOf(resolutions));
 
         // Hack the .zarray to hide Z sections in lower resolutions
         for (int r = 1; r < resolutions; r++) {
