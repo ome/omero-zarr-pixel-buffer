@@ -335,14 +335,15 @@ public class ZarrPixelBufferTest {
         int sizeZ = 4;
         int sizeY = 5;
         int sizeX = 6;
+        int length = sizeT * sizeC * sizeZ * sizeY * sizeX;
         Pixels pixels = new Pixels(null, null, sizeX, sizeY, sizeZ, sizeC, sizeT, "", null);
         Path output = writeTestZarr(sizeT, sizeC, sizeZ, sizeY, sizeX, "int32");
         ZarrArray test = ZarrArray.open(output.resolve("0").resolve("0"));
-        int[] data = new int[2 * 3 * 4 * 5 * 6];
-        for (int i = 0; i < 2 * 3 * 4 * 5 * 6; i++) {
+        int[] data = new int[length];
+        for (int i = 0; i < length; i++) {
             data[i] = i;
         }
-        test.write(data, new int[] {2, 3, 4, 5, 6}, new int[] {0, 0, 0, 0, 0});
+        test.write(data, new int[] {sizeT, sizeC, sizeZ, sizeY, sizeX}, new int[] {0, 0, 0, 0, 0});
         try (ZarrPixelBuffer zpbuf =
                 createPixelBuffer(pixels, output.resolve("0"), 1024, 1024)) {
             PixelData pixelData = zpbuf.getTile(0, 0, 0, 0, 0, 2, 2);
