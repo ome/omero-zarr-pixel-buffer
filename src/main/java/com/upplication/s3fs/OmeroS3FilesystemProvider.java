@@ -35,6 +35,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 
+import com.amazonaws.services.s3.AmazonS3;
 import com.glencoesoftware.omero.zarr.OmeroAmazonS3ClientFactory;
 import com.glencoesoftware.omero.zarr.OmeroS3FileSystem;
 import com.glencoesoftware.omero.zarr.OmeroS3ReadOnlySeekableByteChannel;
@@ -99,6 +100,12 @@ public class OmeroS3FilesystemProvider extends S3FileSystemProvider {
     @Override
     public S3FileSystem createFileSystem(URI uri, Properties props) {
         return new OmeroS3FileSystem(this, getFileSystemKey(uri, props), getAmazonS3(uri, props), uri.getHost());
+    }
+
+    public AmazonS3 createAmazonS3(URI uri, Map<String, ?> env) {
+        Properties props = getProperties(uri, env);
+        validateProperties(props);
+        return getAmazonS3(uri, props);
     }
 
     /**
