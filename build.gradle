@@ -8,8 +8,16 @@ plugins {
 group = 'com.glencoesoftware.omero'
 version = '0.6.0-SNAPSHOT'
 
-sourceCompatibility = 1.11
-targetCompatibility = 1.11
+// Java 11 compatibility configuration
+java {
+    sourceCompatibility = JavaVersion.VERSION_11
+    targetCompatibility = JavaVersion.VERSION_11
+}
+
+// Ensure UTF-8 encoding for compilation
+tasks.withType(JavaCompile) {
+    options.encoding = 'UTF-8'
+}
 
 repositories {
     mavenCentral()
@@ -31,6 +39,26 @@ repositories {
     }
 }
 
+configurations.all {
+    resolutionStrategy {
+        // Force all Jackson dependencies to version 2.14.2
+        eachDependency { DependencyResolveDetails details ->
+            if (details.requested.group == 'com.fasterxml.jackson.core' ||
+                details.requested.group == 'com.fasterxml.jackson.dataformat' ||
+                details.requested.group == 'com.fasterxml.jackson.datatype' ||
+                details.requested.group == 'com.fasterxml.jackson.module' ||
+                details.requested.group == 'com.fasterxml.jackson.jr') {
+                details.useVersion '2.14.2'
+            }
+        }
+        
+        // Explicit force for common Jackson modules
+        force 'com.fasterxml.jackson.core:jackson-core:2.14.2'
+        force 'com.fasterxml.jackson.core:jackson-databind:2.14.2'
+        force 'com.fasterxml.jackson.core:jackson-annotations:2.14.2'
+    }
+}
+
 dependencies {
     api 'org.openmicroscopy:omero-blitz:5.8.3'
     
@@ -49,6 +77,9 @@ dependencies {
     implementation group: 'ch.qos.logback', name: 'logback-core', version: '1.3.14'
     implementation 'org.apache.maven:maven-artifact:3.9.4'
 
+    implementation 'com.fasterxml.jackson.core:jackson-core:2.14.2'
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.14.2'
+ 
     testImplementation 'info.picocli:picocli:4.7.5'
     testImplementation 'com.glencoesoftware:bioformats2raw:0.11.0'
 }
