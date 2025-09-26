@@ -35,10 +35,12 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Splitter;
 import com.upplication.s3fs.OmeroS3FilesystemProvider;
-import com.bc.zarr.ZarrArray;
-import com.bc.zarr.ZarrGroup;
+
 import com.github.benmanes.caffeine.cache.AsyncLoadingCache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import com.glencoesoftware.omero.zarr.compat.ZArray;
+import com.glencoesoftware.omero.zarr.compat.ZarrInfo;
+import com.glencoesoftware.omero.zarr.compat.ZarrPath;
 
 import ome.api.IQuery;
 import ome.conditions.LockTimeout;
@@ -80,10 +82,10 @@ public class ZarrPixelsService extends ome.io.nio.PixelsService {
 
     /** Root path vs. metadata cache */
     private final
-        AsyncLoadingCache<Path, Map<String, Object>> zarrMetadataCache;
+        AsyncLoadingCache<ZarrPath, Map<String, Object>> zarrMetadataCache;
 
     /** Array path vs. ZarrArray cache */
-    private final AsyncLoadingCache<Path, ZarrArray> zarrArrayCache;
+    private final AsyncLoadingCache<ZarrPath, ZArray> zarrArrayCache;
 
     public ZarrPixelsService(
             String path, boolean isReadOnlyRepo, File memoizerDirectory,
@@ -114,12 +116,12 @@ public class ZarrPixelsService extends ome.io.nio.PixelsService {
      * @return See above.
      * @throws IOException
      */
-    public static Map<String, Object> getZarrMetadata(Path path)
+    public static Map<String, Object> getZarrMetadata(ZarrPath path)
             throws IOException {
         // FIXME: Really should be ZarrUtils.readAttributes() to allow for
         // attribute retrieval from either a ZarrArray or ZarrGroup but ZarrPath
         // is package private at the moment.
-        return ZarrGroup.open(path).getAttributes();
+        return path.getMetadata();
     }
 
     /**
@@ -128,63 +130,8 @@ public class ZarrPixelsService extends ome.io.nio.PixelsService {
      * @return See above.
      * @throws IOException
      */
-    public static ZarrArray getZarrArray(Path path) throws IOException {
-        return ZarrArray.open(path);
-    }
-
-    /**
-     * Converts an NGFF root string to a path, initializing a {@link FileSystem}
-     * if required
-     * @param ngffDir NGFF directory root
-     * @return Fully initialized path or <code>null</code> if the NGFF root
-     * directory has not been specified in configuration.
-     * @throws IOException
-     */
-    public static Path asPath(String ngffDir) throws IOException {
-        if (ngffDir.isEmpty()) {
-            return null;
-        }
-
-        try {
-            URI uri = new URI(ngffDir);
-            if ("s3".equals(uri.getScheme())) {
-                if (uri.getUserInfo() != null && !uri.getUserInfo().isEmpty()) {
-                    throw new RuntimeException(
-                        "Found unsupported user information in S3 URI."
-                        + " If you are trying to pass S3 credentials, "
-                        + "use either named profiles or instance credentials.");
-                }
-                String query = Optional.ofNullable(uri.getQuery()).orElse("");
-                Map<String, String> params = Splitter.on('&')
-                        .trimResults()
-                        .omitEmptyStrings()
-                        .withKeyValueSeparator('=')
-                        .split(query);
-                // drop initial "/"
-                String uriPath = uri.getPath().substring(1);
-                int first = uriPath.indexOf("/");
-                String bucket = "/" + uriPath.substring(0, first);
-                String rest = uriPath.substring(first + 1);
-                // FIXME: We might want to support additional S3FS settings in
-                // the future.  See:
-                //   * https://github.com/lasersonlab/Amazon-S3-FileSystem-NIO2
-                Map<String, String> env = new HashMap<String, String>();
-                String profile = params.get("profile");
-                if (profile != null) {
-                    env.put("s3fs_credential_profile_name", profile);
-                }
-                String anonymous =
-                        Optional.ofNullable(params.get("anonymous"))
-                                .orElse("false");
-                env.put("s3fs_anonymous", anonymous);
-                OmeroS3FilesystemProvider fsp = new OmeroS3FilesystemProvider();
-                FileSystem fs = fsp.newFileSystem(uri, env);
-                return fs.getPath(bucket, rest);
-            }
-        } catch (URISyntaxException e) {
-            // Fall through
-        }
-        return Paths.get(ngffDir);
+    public static ZArray getZarrArray(ZarrPath path) throws IOException {
+        return path.getArray();
     }
 
     /**
@@ -305,8 +252,10 @@ public class ZarrPixelsService extends ome.io.nio.PixelsService {
             throw new IllegalArgumentException(
                     "No root for Mask:" + mask.getId());
         }
+        ZarrInfo zarrInfo = new ZarrInfo(root);
+        ZarrPath zarrPath = zarrInfo.getZarrPath();
         return new ZarrPixelBuffer(
-                pixels, asPath(root), maxPlaneWidth, maxPlaneHeight,
+                pixels, zarrPath, maxPlaneWidth, maxPlaneHeight,
                 zarrMetadataCache, zarrArrayCache);
     }
 
@@ -331,11 +280,11 @@ public class ZarrPixelsService extends ome.io.nio.PixelsService {
                 log.debug("No OME-NGFF root");
                 return null;
             }
-            Path root = asPath(uri);
-            log.info("OME-NGFF root is: " + uri);
+            ZarrInfo zarrInfo = new ZarrInfo(uri);
+            log.info("OME-NGFF root is: " + zarrInfo);
             try {
                 ZarrPixelBuffer v = new ZarrPixelBuffer(
-                    pixels, root, maxPlaneWidth, maxPlaneHeight,
+                    pixels, zarrInfo.getZarrPath(), maxPlaneWidth, maxPlaneHeight,
                     zarrMetadataCache, zarrArrayCache);
                 log.info("Using OME-NGFF pixel buffer");
                 return v;
@@ -344,7 +293,7 @@ public class ZarrPixelsService extends ome.io.nio.PixelsService {
                     "Getting OME-NGFF pixel buffer failed - " +
                     "attempting to get local data", e);
             }
-        } catch (IOException e1) {
+        } catch (Exception e1) {
             log.debug(
                 "Failed to find OME-NGFF metadata for Pixels:{}",
                 pixels.getId());
