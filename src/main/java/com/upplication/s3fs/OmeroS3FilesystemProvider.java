@@ -106,6 +106,12 @@ public class OmeroS3FilesystemProvider extends S3FileSystemProvider {
             this, getFileSystemKey(uri, props), getAmazonS3(uri, props), uri.getHost());
     }
 
+    public AmazonS3 createAmazonS3(URI uri, Map<String, ?> env) {
+        Properties props = getProperties(uri, env);
+        validateProperties(props);
+        return getAmazonS3(uri, props);
+    }
+
     /**
      * Overridden, hybrid version of the implementation from
      * {@link S3FileSystemProvider#getAmazonS3Factory(Properties)}.  Our
