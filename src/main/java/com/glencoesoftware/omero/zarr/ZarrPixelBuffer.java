@@ -120,8 +120,13 @@ public class ZarrPixelBuffer implements PixelBuffer {
         this.zarrArrayCache = zarrArrayCache;
         this.isRemote = root.toString().startsWith("s3://") ? true : false;
         try {
-            rootGroupAttributes = this.zarrMetadataCache.get(this.root).get();
-        } catch (ExecutionException | InterruptedException e) {
+            Map<String, Object> tmp = this.zarrMetadataCache.get(this.root).get();
+            if (tmp.containsKey("ome")) { // for ngff challenge data attr are often nested within "ome" key
+                rootGroupAttributes = (Map<String, Object>) tmp.get("ome");
+            } else {
+                rootGroupAttributes = tmp;
+            }
+        } catch (ExecutionException|InterruptedException e) {
             throw new IOException(e);
         }
         if (!rootGroupAttributes.containsKey("multiscales")) {
