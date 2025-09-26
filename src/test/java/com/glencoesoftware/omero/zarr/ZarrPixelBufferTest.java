@@ -18,6 +18,12 @@
 
 package com.glencoesoftware.omero.zarr;
 
+import com.bc.zarr.ZarrArray;
+import com.bc.zarr.ZarrGroup;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.benmanes.caffeine.cache.Caffeine;
+import com.glencoesoftware.bioformats2raw.Converter;
+import com.glencoesoftware.omero.zarr.ZarrPixelBuffer.Axis;
 import java.awt.Dimension;
 import java.io.File;
 import java.io.IOException;
@@ -33,19 +39,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.IntStream;
-
-import org.junit.Assert;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
-import com.glencoesoftware.omero.zarr.ZarrPixelBuffer.Axis;
-
-import com.bc.zarr.ZarrArray;
-import com.bc.zarr.ZarrGroup;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.github.benmanes.caffeine.cache.Caffeine;
-import com.glencoesoftware.bioformats2raw.Converter;
-
 import loci.formats.FormatTools;
 import loci.formats.in.FakeReader;
 import ome.io.nio.DimensionsOutOfBoundsException;
@@ -53,16 +46,22 @@ import ome.model.core.Pixels;
 import ome.model.enums.DimensionOrder;
 import ome.model.enums.PixelsType;
 import ome.util.PixelData;
+import org.junit.Assert;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 import picocli.CommandLine;
 import ucar.ma2.Array;
 import ucar.ma2.DataType;
 import ucar.ma2.InvalidRangeException;
 
+/** Unit tests for ZarrPixelBuffer. */
 public class ZarrPixelBufferTest {
 
     @Rule
     public TemporaryFolder tmpDir = new TemporaryFolder();
 
+    /** Constructor. */
     public ZarrPixelBuffer createPixelBuffer(
             Pixels pixels, Path path,
             Integer maxPlaneWidth, Integer maxPlaneHeight) throws IOException {
@@ -82,7 +81,7 @@ public class ZarrPixelBufferTest {
      *
      * @param additionalArgs CLI arguments as needed beyond "input output"
      */
-    void assertBioFormats2Raw(Path input, Path output, String...additionalArgs)
+    void assertBioFormats2Raw(Path input, Path output, String... additionalArgs)
             throws IOException {
         List<String> args = new ArrayList<String>(
                 Arrays.asList(new String[] { "--compression", "null" }));
@@ -105,11 +104,11 @@ public class ZarrPixelBufferTest {
         }
     }
 
-    static Path fake(String...args) {
-        Assert.assertTrue(args.length %2 == 0);
+    static Path fake(String... args) {
+        Assert.assertTrue(args.length % 2 == 0);
         Map<String, String> options = new HashMap<String, String>();
         for (int i = 0; i < args.length; i += 2) {
-            options.put(args[i], args[i+1]);
+            options.put(args[i], args[i + 1]);
         }
         return fake(options);
     }
@@ -120,24 +119,22 @@ public class ZarrPixelBufferTest {
 
     /**
      * Create a Bio-Formats fake INI file to use for testing.
+     *
      * @param options map of the options to assign as part of the fake filename
-     * from the allowed keys
+     *     from the allowed keys
      * @param series map of the integer series index and options map (same format
-     * as <code>options</code> to add to the fake INI content
-     * @see https://docs.openmicroscopy.org/bio-formats/6.4.0/developers/
-     * generating-test-images.html#key-value-pairs
+     *     as <code>options</code> to add to the fake INI content
+     * @see <a href="https://bio-formats.readthedocs.io/en/latest/developers/generating-test-images.html#key-value-pairs">fake file specification</a>
      * @return path to the fake INI file that has been created
      */
     static Path fake(Map<String, String> options,
-            Map<Integer, Map<String, String>> series)
-    {
+            Map<Integer, Map<String, String>> series) {
         return fake(options, series, null);
     }
 
     static Path fake(Map<String, String> options,
             Map<Integer, Map<String, String>> series,
-            Map<String, String> originalMetadata)
-    {
+            Map<String, String> originalMetadata) {
         StringBuilder sb = new StringBuilder();
         sb.append("image");
         if (options != null) {
@@ -173,10 +170,10 @@ public class ZarrPixelBufferTest {
             String iniPath = iniAsFile.getAbsolutePath();
             String fakePath = iniPath.substring(0, iniPath.length() - 4);
             Path fake = Paths.get(fakePath);
-            File fakeAsFile = fake.toFile();
             Files.write(fake, new byte[]{});
             Files.write(ini, lines);
             iniAsFile.deleteOnExit();
+            File fakeAsFile = fake.toFile();
             fakeAsFile.deleteOnExit();
             return ini;
         } catch (IOException e) {
@@ -184,6 +181,7 @@ public class ZarrPixelBufferTest {
         }
     }
 
+    /** Write Zarr multiscales attributes. */
     public Path writeTestZarr(
         int sizeT,
         int sizeC,
@@ -191,54 +189,18 @@ public class ZarrPixelBufferTest {
         int sizeY,
         int sizeX,
         String pixelType,
-        int resolutions) throws IOException {
+        String... options) throws IOException {
 
-            Path input = fake(
+        Path input = fake(
                 "sizeT", Integer.toString(sizeT),
                 "sizeC", Integer.toString(sizeC),
                 "sizeZ", Integer.toString(sizeZ),
                 "sizeY", Integer.toString(sizeY),
                 "sizeX", Integer.toString(sizeX),
-                "pixelType", pixelType,
-                "resolutions", Integer.toString(resolutions));
+                "pixelType", pixelType);
         Path output = tmpDir.getRoot().toPath().resolve("output.zarr");
-        assertBioFormats2Raw(input, output);
-        
-        List<Object> msArray = new ArrayList<>();
-        Map<String, Object> msData = new HashMap<>();
-        Map<String, Object> msMetadata = new HashMap<>();
-        msMetadata.put("method", "loci.common.image.SimpleImageScaler");
-        msMetadata.put("version", "Bio-Formats 6.5.1");
-        msData.put("metadata", msMetadata);
-        msData.put("datasets", getDatasets(resolutions));
-        msData.put("version", "0.1");
-        msArray.add(msData);
-        ZarrGroup z = ZarrGroup.open(output.resolve("0"));
-        Map<String,Object> attrs = new HashMap<String, Object>();
-        attrs.put("multiscales", msArray);
-        z.writeAttributes(attrs);
+        assertBioFormats2Raw(input, output, options);
         return output;
-            
-        }
-
-    List<Map<String, String>> getDatasets(int resolutions) {
-        List<Map<String, String>> datasets = new ArrayList<>();
-        for (int i = 0; i < resolutions; i++) {
-            Map<String, String> resObj = new HashMap<>();
-            resObj.put("path", Integer.toString(i));
-            datasets.add(resObj);
-        }
-        return datasets;
-    }
-
-    List<Map<String, String>> getAxes(String order) {
-        List<Map<String, String>> axes = new ArrayList<>();
-        for (int i = 0; i < order.length(); i++) {
-            Map<String, String> axisObj = new HashMap<>();
-            axisObj.put("name", Character.toString(order.charAt(i)));
-            axes.add(axisObj);
-        }
-        return axes;
     }
 
     @Test
@@ -249,10 +211,10 @@ public class ZarrPixelBufferTest {
         int sizeY = 512;
         int sizeX = 2048;
         int resolutions = 3;
-        Pixels pixels = new Pixels(
-                null, null, sizeX, sizeY, sizeZ, sizeC, sizeT, "", null);
+        Pixels pixels = new Pixels(null, null, sizeX, sizeY, sizeZ, sizeC, sizeT, "", null);
         Path output = writeTestZarr(
-                sizeT, sizeC, sizeZ, sizeY, sizeX, "uint16", resolutions);
+            sizeT, sizeC, sizeZ, sizeY, sizeX, "uint16",
+            "--resolutions", String.valueOf(resolutions));
         try (ZarrPixelBuffer zpbuf =
                 createPixelBuffer(pixels, output.resolve("0"), 1024, 1024)) {
             int[][] chunks = zpbuf.getChunks();
@@ -261,10 +223,34 @@ public class ZarrPixelBufferTest {
                 new int[] {1, 1, 1, 256, 1024},
                 new int[] {1, 1, 1, 128, 512}
             };
-            for(int i = 0; i < chunks.length; i++) {
-                Assert.assertTrue(Arrays.equals(
-                        chunks[i], expectedChunks[i]));
-            }
+            Assert.assertEquals(chunks, expectedChunks);
+        }
+    }
+
+    @Test
+    public void testGet3DChunks() throws IOException {
+        int sizeT = 1;
+        int sizeC = 3;
+        int sizeZ = 16;
+        int sizeY = 512;
+        int sizeX = 2048;
+        int resolutions = 4;
+        int chunkDepth = 16;
+        Pixels pixels = new Pixels(null, null, sizeX, sizeY, sizeZ, sizeC, sizeT, "", null);
+        Path output = writeTestZarr(
+            sizeT, sizeC, sizeZ, sizeY, sizeX, "uint16",
+            "--resolutions", String.valueOf(resolutions),
+            "--chunk-depth", String.valueOf(chunkDepth));
+        try (ZarrPixelBuffer zpbuf =
+                createPixelBuffer(pixels, output.resolve("0"), 1024, 1024)) {
+            int[][] chunks = zpbuf.getChunks();
+            int[][] expectedChunks = new int[][] {
+                new int[] {1, 1, chunkDepth, 512, 1024},
+                new int[] {1, 1, chunkDepth, 256, 1024},
+                new int[] {1, 1, chunkDepth, 128, 512},
+                new int[] {1, 1, chunkDepth, 64, 256}
+            };
+            Assert.assertEquals(chunks, expectedChunks);
         }
     }
 
@@ -276,17 +262,26 @@ public class ZarrPixelBufferTest {
         int sizeY = 512;
         int sizeX = 2048;
         int resolutions = 3;
-        Pixels pixels = new Pixels(
-                null, null, sizeX, sizeY, sizeZ, sizeC, sizeT, "", null);
+        Pixels pixels = new Pixels(null, null, sizeX, sizeY, sizeZ, sizeC, sizeT, "", null);
         Path output = writeTestZarr(
-                sizeT, sizeC, sizeZ, sizeY, sizeX, "uint16",
-                resolutions);
+            sizeT, sizeC, sizeZ, sizeY, sizeX, "uint16",
+            "--resolutions", String.valueOf(resolutions));
         try (ZarrPixelBuffer zpbuf =
                 createPixelBuffer(pixels, output.resolve("0"), 1024, 1024)) {
-            List<Map<String,String>> datasets = zpbuf.getDatasets();
-            List<Map<String,String>> expectedDatasets = getDatasets(3);
+
+            List<Map<String, String>> datasets = zpbuf.getDatasets();
+            Assert.assertEquals(datasets.size(), resolutions);
             for (int i = 0; i < datasets.size(); i++) {
-                Assert.assertEquals(datasets.get(i), expectedDatasets.get(i));
+                Assert.assertEquals(datasets.get(i).get("path"), Integer.toString(i));
+                List<Map<String, Object>> transformations =
+                    new ArrayList<Map<String, Object>>();
+                Map<String, Object> scale = new HashMap<String, Object>();
+                scale.put("type", "scale");
+                scale.put("scale", Arrays.asList(
+                    new Double[] {1.0, 1.0, 1.0, Math.pow(2, i), Math.pow(2, i)}));
+                transformations.add(scale);
+                Assert.assertEquals(
+                    datasets.get(i).get("coordinateTransformations"), transformations);
             }
         }
     }
@@ -299,10 +294,10 @@ public class ZarrPixelBufferTest {
         int sizeY = 512;
         int sizeX = 2048;
         int resolutions = 3;
-        Pixels pixels = new Pixels(
-                null, null, sizeX, sizeY, sizeZ, sizeC, sizeT, "", null);
+        Pixels pixels = new Pixels(null, null, sizeX, sizeY, sizeZ, sizeC, sizeT, "", null);
         Path output = writeTestZarr(
-                sizeT, sizeC, sizeZ, sizeY, sizeX, "uint16", resolutions);
+            sizeT, sizeC, sizeZ, sizeY, sizeX, "uint16",
+            "--resolutions", String.valueOf(resolutions));
         try (ZarrPixelBuffer zpbuf =
                 createPixelBuffer(pixels, output.resolve("0"), 1024, 1024)) {
             List<List<Integer>> expected = new ArrayList<List<Integer>>();
@@ -340,17 +335,15 @@ public class ZarrPixelBufferTest {
         int sizeZ = 4;
         int sizeY = 5;
         int sizeX = 6;
-        int resolutions = 1;
-        Pixels pixels = new Pixels(
-                null, null, sizeX, sizeY, sizeZ, sizeC, sizeT, "", null);
-        Path output = writeTestZarr(
-                sizeT, sizeC, sizeZ, sizeY, sizeX, "int32", resolutions);
+        int length = sizeT * sizeC * sizeZ * sizeY * sizeX;
+        Pixels pixels = new Pixels(null, null, sizeX, sizeY, sizeZ, sizeC, sizeT, "", null);
+        Path output = writeTestZarr(sizeT, sizeC, sizeZ, sizeY, sizeX, "int32");
         ZarrArray test = ZarrArray.open(output.resolve("0").resolve("0"));
-        int[] data = new int[2*3*4*5*6];
-        for (int i = 0; i < 2*3*4*5*6; i++) {
+        int[] data = new int[length];
+        for (int i = 0; i < length; i++) {
             data[i] = i;
         }
-        test.write(data, new int[] {2,3,4,5,6}, new int[] {0,0,0,0,0});
+        test.write(data, new int[] {sizeT, sizeC, sizeZ, sizeY, sizeX}, new int[] {0, 0, 0, 0, 0});
         try (ZarrPixelBuffer zpbuf =
                 createPixelBuffer(pixels, output.resolve("0"), 1024, 1024)) {
             PixelData pixelData = zpbuf.getTile(0, 0, 0, 0, 0, 2, 2);
@@ -365,7 +358,7 @@ public class ZarrPixelBufferTest {
             bb = pixelData.getData();
             bb.order(ByteOrder.BIG_ENDIAN);
             ib = bb.asIntBuffer();
-            Assert.assertEquals(ib.get(0), 517);//360(6*5*4*3) + 120(6*5*4) + 30(6*5) + 6 + 1
+            Assert.assertEquals(ib.get(0), 517); // 360(6*5*4*3) + 120(6*5*4) + 30(6*5) + 6 + 1
             Assert.assertEquals(ib.get(1), 518);
             Assert.assertEquals(ib.get(2), 523);
             Assert.assertEquals(ib.get(3), 524);
@@ -390,13 +383,13 @@ public class ZarrPixelBufferTest {
             byte[] timepoint, int c, int sizeC, int sizeZ, int sizeX,
             int sizeY, String order) {
         // XXX: Is not data type agnostic, expects signed 32-bit integer pixels
-        int bytesPerPixel = 4;
         int[] shape = new int[4];
         String shapeorder = order.replace("T", "");
         shape[shapeorder.indexOf('C')] = sizeC;
         shape[shapeorder.indexOf('Z')] = sizeZ;
         shape[shapeorder.indexOf('Y')] = sizeY;
         shape[shapeorder.indexOf('X')] = sizeX;
+        int bytesPerPixel = 4;
         int size = IntStream.of(new int[] {sizeZ, sizeY, sizeX, bytesPerPixel})
                 .reduce(1, Math::multiplyExact);
         Array array = asArray(timepoint, shape).slice(shapeorder.indexOf('C'), c);
@@ -414,12 +407,12 @@ public class ZarrPixelBufferTest {
     private byte[] getPlane(
             byte[] stack, int z, int sizeZ, int sizeX, int sizeY, String order) {
         // XXX: Is not data type agnostic, expects signed 32-bit integer pixels
-        int bytesPerPixel = 4;
         String shapeorder = order.replace("T", "").replace("C", "");
         int[] shape = new int[3];
         shape[shapeorder.indexOf('Z')] = sizeZ;
         shape[shapeorder.indexOf('Y')] = sizeY;
         shape[shapeorder.indexOf('X')] = sizeX;
+        int bytesPerPixel = 4;
         int size = IntStream.of(new int[] {sizeY, sizeX, bytesPerPixel})
                 .reduce(1, Math::multiplyExact);
         Array array = asArray(stack, shape).slice(shapeorder.indexOf('Z'), z);
@@ -427,6 +420,52 @@ public class ZarrPixelBufferTest {
         ByteBuffer.wrap(asBytes).asIntBuffer()
                 .put((int[]) array.copyTo1DJavaArray());
         return asBytes;
+    }
+
+    private void assertPixels(
+            ZarrPixelBuffer zpbuf, int sizeX, int sizeY, int sizeZ, int sizeC, int sizeT)
+            throws IOException {
+
+        for (int t = 0; t < sizeT; t++) {
+            for (int c = 0; c < sizeC; c++) {
+                for (int z = 0; z < sizeZ; z++) {
+                    byte[] plane = zpbuf.getPlane(z, c, t).getData().array();
+                    int[] seriesPlaneNumberZCT = FakeReader.readSpecialPixels(
+                        plane, zpbuf.getPixelsType(), false);
+                    int planeNumber = FormatTools.getIndex(
+                        DimensionOrder.VALUE_XYZCT,
+                        sizeZ, sizeC, sizeT, sizeZ * sizeC * sizeT,
+                        z, c, t);
+                    Assert.assertArrayEquals(
+                        Arrays.toString(seriesPlaneNumberZCT),
+                        new int[] {0, planeNumber, z, c, t},
+                        seriesPlaneNumberZCT);
+                }
+            }
+        }
+    }
+
+    private void assertAxes(ZarrPixelBuffer zpbuf, String order) {
+
+        Map<Axis, Integer> axes = zpbuf.getAxesOrder();
+        int indexMax = order.length() - 1;
+        if (order.contains("T")) {
+            Assert.assertEquals(indexMax - order.indexOf("T"), axes.get(Axis.T).intValue());
+        } else {
+            Assert.assertFalse(axes.containsKey(Axis.T));
+        }
+        if (order.contains("C")) {
+            Assert.assertEquals(indexMax - order.indexOf("C"), axes.get(Axis.C).intValue());
+        } else {
+            Assert.assertFalse(axes.containsKey(Axis.C));
+        }
+        if (order.contains("Z")) {
+            Assert.assertEquals(indexMax - order.indexOf("Z"), axes.get(Axis.Z).intValue());
+        } else {
+            Assert.assertFalse(axes.containsKey(Axis.Z));
+        }
+        Assert.assertEquals(indexMax - order.indexOf("Y"), axes.get(Axis.Y).intValue());
+        Assert.assertEquals(indexMax - order.indexOf("X"), axes.get(Axis.X).intValue());
     }
 
     private byte[] getCol(byte[] plane, int x, int sizeX, int sizeY) {
@@ -450,11 +489,8 @@ public class ZarrPixelBufferTest {
         int sizeZ = 4;
         int sizeY = 1024;
         int sizeX = 2048;
-        int resolutions = 1;
-        Pixels pixels = new Pixels(
-                null, null, sizeX, sizeY, sizeZ, sizeC, sizeT, "", null);
-        Path output = writeTestZarr(
-                sizeT, sizeC, sizeZ, sizeY, sizeX, "int32", resolutions);
+        Pixels pixels = new Pixels(null, null, sizeX, sizeY, sizeZ, sizeC, sizeT, "", null);
+        Path output = writeTestZarr(sizeT, sizeC, sizeZ, sizeY, sizeX, "int32");
         try (ZarrPixelBuffer zpbuf =
                 createPixelBuffer(pixels, output.resolve("0"), 2048, 2048)) {
             for (int t = 0; t < sizeT; t++) {
@@ -511,18 +547,15 @@ public class ZarrPixelBufferTest {
         int sizeZ = 4;
         int sizeY = 5;
         int sizeX = 6;
-        int resolutions = 1;
-        Pixels pixels = new Pixels(
-                null, null, sizeX, sizeY, sizeZ, sizeC, sizeT, "", null);
-        Path output = writeTestZarr(
-                sizeT, sizeC, sizeZ, sizeY, sizeX, "int32",
-                resolutions);
+        int length = sizeT * sizeC * sizeZ * sizeY * sizeX;
+        Pixels pixels = new Pixels(null, null, sizeX, sizeY, sizeZ, sizeC, sizeT, "", null);
+        Path output = writeTestZarr(sizeT, sizeC, sizeZ, sizeY, sizeX, "int32");
         ZarrArray test = ZarrArray.open(output.resolve("0").resolve("0"));
-        int[] data = new int[2*3*4*5*6];
-        for (int i = 0; i < 2*3*4*5*6; i++) {
+        int[] data = new int[length];
+        for (int i = 0; i < length; i++) {
             data[i] = i;
         }
-        test.write(data, new int[] {2,3,4,5,6}, new int[] {0,0,0,0,0});
+        test.write(data, new int[] {sizeT, sizeC, sizeZ, sizeY, sizeX}, new int[] {0, 0, 0, 0, 0});
         try (ZarrPixelBuffer zpbuf =
                 createPixelBuffer(pixels, output.resolve("0"), 1024, 1024)) {
             zpbuf.setResolutionLevel(0);
@@ -545,23 +578,19 @@ public class ZarrPixelBufferTest {
         int sizeZ = 1;
         int sizeY = 1;
         int sizeX = 1;
-        int resolutions = 1;
-        Pixels pixels = new Pixels(
-                null, null, sizeX, sizeY, sizeZ, sizeC, sizeT, "", null);
-        Path output = writeTestZarr(
-                sizeT, sizeC, sizeZ, sizeY, sizeX, "uint16",
-                resolutions);
+        Pixels pixels = new Pixels(null, null, sizeX, sizeY, sizeZ, sizeC, sizeT, "", null);
+        Path output = writeTestZarr(sizeT, sizeC, sizeZ, sizeY, sizeX, "uint16");
 
         // Hack the .zarray so we can appear as though we have more data than
         // we actually have written above.
         ObjectMapper mapper = new ObjectMapper();
-        HashMap<String, Object> zArray = mapper.readValue(
+        HashMap<String, Object> arrayAttrs = mapper.readValue(
                 Files.readAllBytes(output.resolve("0/0/.zarray")),
                 HashMap.class);
-        List<Integer> shape = (List<Integer>) zArray.get("shape");
+        List<Integer> shape = (List<Integer>) arrayAttrs.get("shape");
         shape.set(3, 50000);
         shape.set(4, 50000);
-        mapper.writeValue(output.resolve("0/0/.zarray").toFile(), zArray);
+        mapper.writeValue(output.resolve("0/0/.zarray").toFile(), arrayAttrs);
         try (ZarrPixelBuffer zpbuf =
                 createPixelBuffer(pixels, output.resolve("0"), 32, 32)) {
             zpbuf.getTile(0, 0, 0, 0, 0, 50000, 50000);
@@ -575,12 +604,8 @@ public class ZarrPixelBufferTest {
         int sizeZ = 1;
         int sizeY = 512;
         int sizeX = 2048;
-        int resolutions = 3;
-        Pixels pixels = new Pixels(
-                null, null, sizeX, sizeY, sizeZ, sizeC, sizeT, "", null);
-        Path output = writeTestZarr(
-                sizeT, sizeC, sizeZ, sizeY, sizeX, "uint16",
-                resolutions);
+        Pixels pixels = new Pixels(null, null, sizeX, sizeY, sizeZ, sizeC, sizeT, "", null);
+        Path output = writeTestZarr(sizeT, sizeC, sizeZ, sizeY, sizeX, "uint16");
 
         try (ZarrPixelBuffer zpbuf =
                 createPixelBuffer(pixels, output.resolve("0"), 32, 32)) {
@@ -597,11 +622,8 @@ public class ZarrPixelBufferTest {
         int sizeZ = 3;
         int sizeY = 512;
         int sizeX = 2048;
-        int resolutions = 3;
-        Pixels pixels = new Pixels(
-                null, null, sizeX, sizeY, sizeZ, sizeC, sizeT, "", null);
-        Path output = writeTestZarr(
-                sizeT, sizeC, sizeZ, sizeY, sizeX, "uint16", resolutions);
+        Pixels pixels = new Pixels(null, null, sizeX, sizeY, sizeZ, sizeC, sizeT, "", null);
+        Path output = writeTestZarr(sizeT, sizeC, sizeZ, sizeY, sizeX, "uint16");
         try (ZarrPixelBuffer zpbuf =
                 createPixelBuffer(pixels, output.resolve("0"), 1024, 1024)) {
             zpbuf.checkBounds(0, 0, 0, 0, 0);
@@ -615,11 +637,8 @@ public class ZarrPixelBufferTest {
         int sizeZ = 3;
         int sizeY = 512;
         int sizeX = 2048;
-        int resolutions = 3;
-        Pixels pixels = new Pixels(
-                null, null, sizeX, sizeY, sizeZ, sizeC, sizeT, "", null);
-        Path output = writeTestZarr(
-                sizeT, sizeC, sizeZ, sizeY, sizeX, "uint16", resolutions);
+        Pixels pixels = new Pixels(null, null, sizeX, sizeY, sizeZ, sizeC, sizeT, "", null);
+        Path output = writeTestZarr(sizeT, sizeC, sizeZ, sizeY, sizeX, "uint16");
         try (ZarrPixelBuffer zpbuf =
                 createPixelBuffer(pixels, output.resolve("0"), 1024, 1024)) {
             zpbuf.checkBounds(2047, 511, 2, 1, 0);
@@ -633,11 +652,8 @@ public class ZarrPixelBufferTest {
         int sizeZ = 3;
         int sizeY = 512;
         int sizeX = 2048;
-        int resolutions = 3;
-        Pixels pixels = new Pixels(
-                null, null, sizeX, sizeY, sizeZ, sizeC, sizeT, "", null);
-        Path output = writeTestZarr(
-                sizeT, sizeC, sizeZ, sizeY, sizeX, "uint16", resolutions);
+        Pixels pixels = new Pixels(null, null, sizeX, sizeY, sizeZ, sizeC, sizeT, "", null);
+        Path output = writeTestZarr(sizeT, sizeC, sizeZ, sizeY, sizeX, "uint16");
         try (ZarrPixelBuffer zpbuf =
                 createPixelBuffer(pixels, output.resolve("0"), 1024, 1024)) {
             zpbuf.checkBounds(2048, 511, 2, 1, 0);
@@ -651,11 +667,9 @@ public class ZarrPixelBufferTest {
         int sizeZ = 3;
         int sizeY = 512;
         int sizeX = 2048;
-        int resolutions = 3;
         Pixels pixels = new Pixels(
-                null, null, sizeX, sizeY, sizeZ, sizeC, sizeT, "", null);
-        Path output = writeTestZarr(
-                sizeT, sizeC, sizeZ, sizeY, sizeX, "uint16", resolutions);
+            null, null, sizeX, sizeY, sizeZ, sizeC, sizeT, "", null);
+        Path output = writeTestZarr(sizeT, sizeC, sizeZ, sizeY, sizeX, "uint16");
         try (ZarrPixelBuffer zpbuf =
                 createPixelBuffer(pixels, output.resolve("0"), 1024, 1024)) {
             zpbuf.checkBounds(-1, 0, 0, 0, 0);
@@ -669,11 +683,8 @@ public class ZarrPixelBufferTest {
         int sizeZ = 1;
         int sizeY = 2048;
         int sizeX = 2048;
-        int resolutions = 3;
-        Pixels pixels = new Pixels(
-                null, null, sizeX, sizeY, sizeZ, sizeC, sizeT, "", null);
-        Path output = writeTestZarr(
-                sizeT, sizeC, sizeZ, sizeY, sizeX, "uint16", resolutions);
+        Pixels pixels = new Pixels(null, null, sizeX, sizeY, sizeZ, sizeC, sizeT, "", null);
+        Path output = writeTestZarr(sizeT, sizeC, sizeZ, sizeY, sizeX, "uint16");
         try (ZarrPixelBuffer zpbuf =
                 createPixelBuffer(pixels, output.resolve("0"), 1024, 1024)) {
             Dimension tileSize = zpbuf.getTileSize();
@@ -691,10 +702,8 @@ public class ZarrPixelBufferTest {
         int sizeX = 2048;
         int resolutions = 3;
         int bytesPerPixel = 2;
-        Pixels pixels = new Pixels(
-                null, null, sizeX, sizeY, sizeZ, sizeC, sizeT, "", null);
-        Path output = writeTestZarr(
-                sizeT, sizeC, sizeZ, sizeY, sizeX, "uint16", resolutions);
+        Pixels pixels = new Pixels(null, null, sizeX, sizeY, sizeZ, sizeC, sizeT, "", null);
+        Path output = writeTestZarr(sizeT, sizeC, sizeZ, sizeY, sizeX, "uint16");
         try (ZarrPixelBuffer zpbuf =
                 createPixelBuffer(pixels, output.resolve("0"), 1024, 1024)) {
             Assert.assertEquals(FormatTools.UINT16, zpbuf.getPixelsType());
@@ -713,10 +722,8 @@ public class ZarrPixelBufferTest {
         int sizeX = 2048;
         int resolutions = 3;
         int bytesPerPixel = 4;
-        Pixels pixels = new Pixels(
-                null, null, sizeX, sizeY, sizeZ, sizeC, sizeT, "", null);
-        Path output = writeTestZarr(
-                sizeT, sizeC, sizeZ, sizeY, sizeX, "float", resolutions);
+        Pixels pixels = new Pixels(null, null, sizeX, sizeY, sizeZ, sizeC, sizeT, "", null);
+        Path output = writeTestZarr(sizeT, sizeC, sizeZ, sizeY, sizeX, "float");
         try (ZarrPixelBuffer zpbuf =
                 createPixelBuffer(pixels, output.resolve("0"), 1024, 1024)) {
             Assert.assertEquals(FormatTools.FLOAT, zpbuf.getPixelsType());
@@ -733,12 +740,9 @@ public class ZarrPixelBufferTest {
         int sizeZ = 3;
         int sizeY = 1024;
         int sizeX = 2048;
-        int resolutions = 3;
         int bytesPerPixel = 2;
-        Pixels pixels = new Pixels(
-                null, null, sizeX, sizeY, sizeZ, sizeC, sizeT, "", null);
-        Path output = writeTestZarr(
-                sizeT, sizeC, sizeZ, sizeY, sizeX, "uint16", resolutions);
+        Pixels pixels = new Pixels(null, null, sizeX, sizeY, sizeZ, sizeC, sizeT, "", null);
+        Path output = writeTestZarr(sizeT, sizeC, sizeZ, sizeY, sizeX, "uint16");
         try (ZarrPixelBuffer zpbuf =
                 createPixelBuffer(pixels, output.resolve("0"), 1024, 1024)) {
             // Plane size
@@ -776,13 +780,13 @@ public class ZarrPixelBufferTest {
         int sizeY = 2048;
         int sizeX = 2048;
         int resolutions = 3;
-        Pixels pixels = new Pixels(
-                null, null, sizeX, sizeY, sizeZ, sizeC, sizeT, "", null);
+        Pixels pixels = new Pixels(null, null, sizeX, sizeY, sizeZ, sizeC, sizeT, "", null);
         Path output = writeTestZarr(
-                sizeT, sizeC, sizeZ, sizeY, sizeX, "uint16", resolutions);
+            sizeT, sizeC, sizeZ, sizeY, sizeX, "uint16",
+            "--resolutions", String.valueOf(resolutions));
         try (ZarrPixelBuffer zpbuf =
                 createPixelBuffer(pixels, output.resolve("0"), 1024, 1024)) {
-            zpbuf.setResolutionLevel(3);
+            zpbuf.setResolutionLevel(resolutions);
         }
     }
 
@@ -794,27 +798,26 @@ public class ZarrPixelBufferTest {
         int sizeY = 2048;
         int sizeX = 2048;
         int resolutions = 3;
-
-        Pixels pixels = new Pixels(
-                null, null, sizeX, sizeY, sizeZ, sizeC, sizeT, "", null);
+        Pixels pixels = new Pixels(null, null, sizeX, sizeY, sizeZ, sizeC, sizeT, "", null);
         Path output = writeTestZarr(
-                sizeT, sizeC, sizeZ, sizeY, sizeX, "uint8", resolutions);
+            sizeT, sizeC, sizeZ, sizeY, sizeX, "uint8",
+            "--resolutions", String.valueOf(resolutions));
 
         // Hack the .zarray to hide Z sections in lower resolutions
-        for (int r=1; r<resolutions; r++) {
+        for (int r = 1; r < resolutions; r++) {
             ObjectMapper mapper = new ObjectMapper();
-            HashMap<String, Object> zArray = mapper.readValue(
+            HashMap<String, Object> arrayAttrs = mapper.readValue(
                     Files.readAllBytes(output.resolve("0/" + r + "/.zarray")),
                     HashMap.class);
-            List<Integer> shape = (List<Integer>) zArray.get("shape");
+            List<Integer> shape = (List<Integer>) arrayAttrs.get("shape");
             shape.set(2, sizeZ / (int) Math.pow(2, r));
-            mapper.writeValue(output.resolve("0/" + r + "/.zarray").toFile(), zArray);
+            mapper.writeValue(output.resolve("0/" + r + "/.zarray").toFile(), arrayAttrs);
         }
 
         try (ZarrPixelBuffer zpbuf =
                 createPixelBuffer(pixels, output.resolve("0"), sizeX, sizeY)) {
             // get the last Z section, for each resolution level
-            for (int r=0; r<resolutions; r++) {
+            for (int r = 0; r < resolutions; r++) {
                 zpbuf.setResolutionLevel(r);
 
                 byte[] plane = zpbuf.getPlane(sizeZ - 1, 0, 0).getData().array();
@@ -833,24 +836,11 @@ public class ZarrPixelBufferTest {
         int sizeY = 1024;
         int sizeX = 2048;
         String order = DimensionOrder.VALUE_XYCTZ; // Default XYZCT
-        String rev_order  = new StringBuilder(order).reverse().toString();
+        String revOrder  = new StringBuilder(order).reverse().toString();
         Pixels pixels = new Pixels(
-                null, null, sizeX, sizeY, sizeZ, sizeC, sizeT, "", new DimensionOrder(order));
-
-        Path output = tmpDir.getRoot().toPath().resolve("test.zarr");
-        new TestZarr()
-                .setPath(output)
-                .setOverwrite(true)
-                .setSizeX(sizeX)
-                .setSizeY(sizeY)
-                .setSizeZ(sizeZ)
-                .setSizeT(sizeT)
-                .setSizeC(sizeC)
-                .setOrder(rev_order)
-                .setDataType(com.bc.zarr.DataType.i4) // getStack expects int32
-                .init()
-                .createImage()
-                .createMetadata();
+            null, null, sizeX, sizeY, sizeZ, sizeC, sizeT, "", new DimensionOrder(order));
+        Path output = writeTestZarr(
+            sizeT, sizeC, sizeZ, sizeY, sizeX, "int32", "--dimension-order", order);
 
         try (ZarrPixelBuffer zpbuf =
                 createPixelBuffer(pixels, output.resolve("0"), sizeX, sizeY)) {
@@ -861,14 +851,14 @@ public class ZarrPixelBufferTest {
                     // Assert stack
                     byte[] stack = zpbuf.getStack(c, t).getData().array();
                     byte[] stackFromTimepoint =
-                            getStack(timepoint, c, sizeC, sizeZ, sizeX, sizeY, rev_order);
+                            getStack(timepoint, c, sizeC, sizeZ, sizeX, sizeY, revOrder);
                     Assert.assertArrayEquals(stack, stackFromTimepoint);
                     for (int z = 0; z < sizeZ; z++) {
                         // Assert plane
                         byte[] plane =
                             zpbuf.getPlane(z, c, t).getData().array();
                         byte[] planeFromStack =
-                                getPlane(stack, z, sizeZ, sizeX, sizeY, rev_order);
+                                getPlane(stack, z, sizeZ, sizeX, sizeY, revOrder);
                         Assert.assertArrayEquals(plane, planeFromStack);
                         // Assert row
                         int y = sizeY / 2;
@@ -890,7 +880,7 @@ public class ZarrPixelBufferTest {
     }
 
     @Test
-    public void test_default_order()
+    public void testDefaultOrder()
         throws IOException, InvalidRangeException {
         // Check that if access are not in the file it defaults to TCZYX order when no axes found
 
@@ -899,180 +889,123 @@ public class ZarrPixelBufferTest {
         int sizeZ = 16;
         int sizeY = 256;
         int sizeX = 512;
-        int resolutions = 1;
-
-        Pixels pixels = new Pixels(
-                null, null, sizeX, sizeY, sizeZ, sizeC, sizeT, "", null);
-        Path output = writeTestZarr(
-                sizeT, sizeC, sizeZ, sizeY, sizeX, "uint8", resolutions);
+        Pixels pixels = new Pixels(null, null, sizeX, sizeY, sizeZ, sizeC, sizeT, "", null);
+        Path output = writeTestZarr(sizeT, sizeC, sizeZ, sizeY, sizeX, "uint8");
 
         try (ZarrPixelBuffer zpbuf =
                 createPixelBuffer(pixels, output.resolve("0"), sizeX, sizeY)) {
-                    Map<Axis, Integer> axes = zpbuf.getAxesOrder();
-                    Assert.assertEquals(0, axes.get(Axis.T).intValue());
-                    Assert.assertEquals(1, axes.get(Axis.C).intValue());
-                    Assert.assertEquals(2, axes.get(Axis.Z).intValue());
-                    Assert.assertEquals(3, axes.get(Axis.Y).intValue());
-                    Assert.assertEquals(4, axes.get(Axis.X).intValue());
-                    Assert.assertEquals(sizeT, zpbuf.getSizeT());
-                    Assert.assertEquals(sizeC, zpbuf.getSizeC());
-                    Assert.assertEquals(sizeZ, zpbuf.getSizeZ());
-                    Assert.assertEquals(sizeY, zpbuf.getSizeY());
-                    Assert.assertEquals(sizeX, zpbuf.getSizeX());
+            Assert.assertEquals(sizeT, zpbuf.getSizeT());
+            Assert.assertEquals(sizeC, zpbuf.getSizeC());
+            Assert.assertEquals(sizeZ, zpbuf.getSizeZ());
+            Assert.assertEquals(sizeY, zpbuf.getSizeY());
+            Assert.assertEquals(sizeX, zpbuf.getSizeX());
+            assertAxes(zpbuf, "XYZCT");
         }
     }
 
     @Test
-    public void test_XYCTZ() throws IOException, InvalidRangeException {
-        testDimensions(512, 1024, 2, 3, 4);
+    public void testXYZCT() throws IOException, InvalidRangeException {
+        testCompactDimensions(512, 1024, 2, 3, 4, "XYZCT");
     }
 
     @Test
-    public void test_XYCT() throws IOException, InvalidRangeException {
-        testDimensions(512, 1024, 0, 3, 4);
+    public void testXYCT() throws IOException, InvalidRangeException {
+        testCompactDimensions(512, 1024, 1, 3, 4, "XYCT");
     }
 
     @Test
-    public void test_XYCZ() throws IOException, InvalidRangeException {
-        testDimensions(512, 1024, 2, 3, 0);
+    public void testXYZC() throws IOException, InvalidRangeException {
+        testCompactDimensions(512, 1024, 2, 3, 1, "XYZC");
     }
 
     @Test
-    public void test_XYTZ() throws IOException, InvalidRangeException {
-        testDimensions(512, 1024, 2, 0, 4);
+    public void testXYZT() throws IOException, InvalidRangeException {
+        testCompactDimensions(512, 1024, 2, 1, 4, "XYZT");
     }
 
     @Test
-    public void test_XYZ() throws IOException, InvalidRangeException {
-        testDimensions(512, 1024, 2, 0, 0);
+    public void testXYZ() throws IOException, InvalidRangeException {
+        testCompactDimensions(512, 1024, 2, 1, 1, "XYZ");
     }
 
     @Test
-    public void test_XYT() throws IOException, InvalidRangeException {
-        testDimensions(512, 1024, 0, 0, 4);
+    public void testXYT() throws IOException, InvalidRangeException {
+        testCompactDimensions(512, 1024, 1, 1, 4, "XYT");
     }
 
     @Test
-    public void test_XYC() throws IOException, InvalidRangeException {
-        testDimensions(512, 1024, 0, 3, 0);
+    public void testXYC() throws IOException, InvalidRangeException {
+        testCompactDimensions(512, 1024, 1, 3, 1, "XYC");
     }
 
     @Test
-    public void test_XY() throws IOException, InvalidRangeException {
-        testDimensions(512, 1024, 0, 0, 0);
+    public void testXY() throws IOException, InvalidRangeException {
+        testCompactDimensions(512, 1024, 1, 1, 1, "XY");
     }
 
     @Test
-    public void test_Order_XYCTZ() throws IOException, InvalidRangeException {
+    public void testOrderXYCTZ() throws IOException, InvalidRangeException {
         testOrder(DimensionOrder.VALUE_XYCTZ);
     }
 
     @Test
-    public void test_Order_XYCZT() throws IOException, InvalidRangeException {
+    public void testOrderXYCZT() throws IOException, InvalidRangeException {
         testOrder(DimensionOrder.VALUE_XYCZT);
     }
 
     @Test
-    public void test_Order_XYTCZ() throws IOException, InvalidRangeException {
+    public void testOrderXYTCZ() throws IOException, InvalidRangeException {
         testOrder(DimensionOrder.VALUE_XYTCZ);
     }
 
     @Test
-    public void test_Order_XYTZC() throws IOException, InvalidRangeException {
+    public void testOrderXYTZC() throws IOException, InvalidRangeException {
         testOrder(DimensionOrder.VALUE_XYTZC);
     }
 
     @Test
-    public void test_Order_XYZCT() throws IOException, InvalidRangeException {
+    public void testOrderXYZCT() throws IOException, InvalidRangeException {
         testOrder(DimensionOrder.VALUE_XYZCT);
     }
 
     @Test
-    public void test_Order_XYZTC() throws IOException, InvalidRangeException {
+    public void testOrderXYZTC() throws IOException, InvalidRangeException {
         testOrder(DimensionOrder.VALUE_XYZTC);
     }
 
     private void testOrder(String order) throws IOException, InvalidRangeException {
-        Path testZarrPath = tmpDir.getRoot().toPath().resolve("test.zarr");
-        TestZarr testZarr = new TestZarr()
-            .setPath(testZarrPath)
-            .setOrder(new StringBuilder(order).reverse().toString())
-            .init()
-            .createImage()
-            .createMetadata();
-
+        int sizeT = 2;
+        int sizeC = 3;
+        int sizeZ = 4;
+        int sizeY = 256;
+        int sizeX = 512;
         Pixels pixels = new Pixels(
-            null, null, testZarr.getSizeX(), testZarr.getSizeY(), testZarr.getSizeZ(), testZarr.getSizeC(), testZarr.getSizeT(), "", new DimensionOrder(order));
+            null, null, sizeX, sizeY, sizeZ, sizeC, sizeT, "",  new DimensionOrder(order));
+        Path output = writeTestZarr(
+            sizeT, sizeC, sizeZ, sizeY, sizeX, "uint16", "--dimension-order", order);
 
         try (ZarrPixelBuffer zpbuf =
-            createPixelBuffer(pixels, testZarrPath.resolve("0"), testZarr.getSizeX(), testZarr.getSizeY())) {
-                Map<Axis, Integer> axes = zpbuf.getAxesOrder();
-                Assert.assertEquals(4 - order.indexOf("Z"), axes.get(Axis.Z).intValue());
-                Assert.assertEquals(4 - order.indexOf("T"), axes.get(Axis.T).intValue());
-                Assert.assertEquals(4 - order.indexOf("C"), axes.get(Axis.C).intValue());
-                Assert.assertEquals(4 - order.indexOf("Y"), axes.get(Axis.Y).intValue());
-                Assert.assertEquals(4 - order.indexOf("X"), axes.get(Axis.X).intValue());
-                Assert.assertEquals(testZarr.getSizeT(), zpbuf.getSizeT());
-                Assert.assertEquals(testZarr.getSizeC(), zpbuf.getSizeC());
-                Assert.assertEquals(testZarr.getSizeZ(), zpbuf.getSizeZ());
-                Assert.assertEquals(testZarr.getSizeY(), zpbuf.getSizeY());
-                Assert.assertEquals(testZarr.getSizeX(), zpbuf.getSizeX());
+                createPixelBuffer(pixels, output.resolve("0"), sizeX, sizeY)) {
+            Assert.assertEquals(sizeT, zpbuf.getSizeT());
+            Assert.assertEquals(sizeC, zpbuf.getSizeC());
+            Assert.assertEquals(sizeZ, zpbuf.getSizeZ());
+            Assert.assertEquals(sizeY, zpbuf.getSizeY());
+            Assert.assertEquals(sizeX, zpbuf.getSizeX());
+            assertAxes(zpbuf, order);
+            assertPixels(zpbuf, sizeX, sizeY, sizeZ, sizeC, sizeT);
         }
     }
 
-    private void testDimensions(int sizeX, int sizeY, int sizeZ, int sizeC, int sizeT) throws IOException, InvalidRangeException {
-        int textX = 10;
-        int textY = 10;
+    private void testCompactDimensions(
+            int sizeX, int sizeY, int sizeZ, int sizeC, int sizeT, String order)
+            throws IOException, InvalidRangeException {
         
-        String order = DimensionOrder.VALUE_XYZCT;
-        if (sizeT == 0) {
-            order.replace("T", "");
+        Pixels pixels = new Pixels(null, null, sizeX, sizeY, sizeZ, sizeC, sizeT, "", null);
+        Path output = writeTestZarr(sizeT, sizeC, sizeZ, sizeY, sizeX, "uint16", "--compact");
+        try (ZarrPixelBuffer zpbuf =
+                createPixelBuffer(pixels, output.resolve("0"), sizeX, sizeY)) {
+            assertAxes(zpbuf, order);
+            assertPixels(zpbuf, sizeX, sizeY, sizeZ, sizeC, sizeT);
         }
-        if (sizeZ == 0) {
-            order.replace("Z", "");
-        }
-        if (sizeC == 0) {
-            order.replace("C", "");
-        }
-        
-        Path testZarrPath = tmpDir.getRoot().toPath().resolve("test.zarr");
-        TestZarr testZarr = new TestZarr()
-            .setPath(testZarrPath)
-            .setOverwrite(true)
-            .setSizeX(sizeX)
-            .setSizeY(sizeY)
-            .setSizeZ(sizeZ)
-            .setSizeT(sizeT)
-            .setSizeC(sizeC)
-            .setOrder(new StringBuilder(order).reverse().toString())
-            .setTextX(textX)
-            .setTextY(textY)
-            .init()
-            .createImage()
-            .createMetadata();
-
-        int pixZ = sizeZ > 0 ? sizeZ : 1;
-        int pixC = sizeC > 0 ? sizeC : 1;
-        int pixT = sizeT > 0 ? sizeT : 1;
-        
-        Pixels pixels = new Pixels(
-            null, new PixelsType(PixelsType.VALUE_INT32), 
-            sizeX, sizeY, pixZ, pixC, pixT, "", new DimensionOrder(DimensionOrder.VALUE_XYZCT));
-        
-        int expectedTests = pixC * pixT * pixZ;
-        int testCount = 0;
-        try (ZarrPixelBuffer zpbuf = createPixelBuffer(pixels, testZarrPath.resolve("0"), sizeX, sizeY)) {
-            for (int t = 0; t < Math.max(sizeT, 1); t++) {
-                for (int z = 0; z < Math.max(sizeZ, 1); z++) {
-                    for (int c = 0; c < Math.max(sizeC, 1); c++) {
-                        byte[] expected = testZarr.generateGreyscaleImageWithText(c, z, t);
-                        byte[] actual = zpbuf.getPlane(z, c, t).getData().array();
-                        Assert.assertArrayEquals(expected, actual);
-                        testCount++;
-                    }
-                }
-            }
-        }   
-        Assert.assertEquals(expectedTests, testCount);
     }
 }

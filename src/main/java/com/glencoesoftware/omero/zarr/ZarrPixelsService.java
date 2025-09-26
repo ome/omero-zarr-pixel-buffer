@@ -18,6 +18,12 @@
 
 package com.glencoesoftware.omero.zarr;
 
+import com.bc.zarr.ZarrArray;
+import com.bc.zarr.ZarrGroup;
+import com.github.benmanes.caffeine.cache.AsyncLoadingCache;
+import com.github.benmanes.caffeine.cache.Caffeine;
+import com.google.common.base.Splitter;
+import com.upplication.s3fs.OmeroS3FilesystemProvider;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
@@ -28,18 +34,6 @@ import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
-
-import org.perf4j.StopWatch;
-import org.perf4j.slf4j.Slf4JStopWatch;
-import org.slf4j.LoggerFactory;
-
-import com.google.common.base.Splitter;
-import com.upplication.s3fs.OmeroS3FilesystemProvider;
-import com.bc.zarr.ZarrArray;
-import com.bc.zarr.ZarrGroup;
-import com.github.benmanes.caffeine.cache.AsyncLoadingCache;
-import com.github.benmanes.caffeine.cache.Caffeine;
-
 import ome.api.IQuery;
 import ome.conditions.LockTimeout;
 import ome.io.nio.BackOff;
@@ -51,11 +45,15 @@ import ome.model.core.Image;
 import ome.model.core.Pixels;
 import ome.model.meta.ExternalInfo;
 import ome.model.roi.Mask;
+import org.perf4j.StopWatch;
+import org.perf4j.slf4j.Slf4JStopWatch;
+import org.slf4j.LoggerFactory;
 
 /**
  * Subclass which overrides series retrieval to avoid the need for
  * an injected {@link IQuery}.
- * @author Chris Allan <callan@glencoesoftware.com>
+ *
+ * @author Chris Allan
  *
  */
 public class ZarrPixelsService extends ome.io.nio.PixelsService {
@@ -66,25 +64,26 @@ public class ZarrPixelsService extends ome.io.nio.PixelsService {
     public static final String NGFF_ENTITY_TYPE = "com.glencoesoftware.ngff:multiscales";
     public static final long NGFF_ENTITY_ID = 3;
 
-    /** Max Plane Width */
+    /** Max Plane Width. */
     protected final Integer maxPlaneWidth;
 
-    /** Max Plane Height */
+    /** Max Plane Height. */
     protected final Integer maxPlaneHeight;
 
-    /** Zarr metadata and array cache size */
+    /** Zarr metadata and array cache size. */
     private final long zarrCacheSize;
 
-    /** Copy of private IQuery also provided to ome.io.nio.PixelsService */
+    /** Copy of private IQuery also provided to ome.io.nio.PixelsService. */
     private final IQuery iQuery;
 
-    /** Root path vs. metadata cache */
+    /** Root path vs. metadata cache. */
     private final
         AsyncLoadingCache<Path, Map<String, Object>> zarrMetadataCache;
 
     /** Array path vs. ZarrArray cache */
     private final AsyncLoadingCache<Path, ZarrArray> zarrArrayCache;
 
+    /** Default constructor. */
     public ZarrPixelsService(
             String path, boolean isReadOnlyRepo, File memoizerDirectory,
             long memoizerWait, FilePathResolver resolver, BackOff backOff,
@@ -110,9 +109,9 @@ public class ZarrPixelsService extends ome.io.nio.PixelsService {
 
     /**
      * Retrieves Zarr metadata from a given path.
-     * @param root path to get Zarr metadata from
+     *
+     * @param path path to get Zarr metadata from
      * @return See above.
-     * @throws IOException
      */
     public static Map<String, Object> getZarrMetadata(Path path)
             throws IOException {
@@ -124,9 +123,9 @@ public class ZarrPixelsService extends ome.io.nio.PixelsService {
 
     /**
      * Opens a Zarr array at a given path.
-     * @param root path to open a Zarr array from
+     *
+     * @param path path to open a Zarr array from
      * @return See above.
-     * @throws IOException
      */
     public static ZarrArray getZarrArray(Path path) throws IOException {
         return ZarrArray.open(path);
@@ -134,11 +133,11 @@ public class ZarrPixelsService extends ome.io.nio.PixelsService {
 
     /**
      * Converts an NGFF root string to a path, initializing a {@link FileSystem}
-     * if required
+     * if required.
+     *
      * @param ngffDir NGFF directory root
      * @return Fully initialized path or <code>null</code> if the NGFF root
-     * directory has not been specified in configuration.
-     * @throws IOException
+     *     directory has not been specified in configuration.
      */
     public static Path asPath(String ngffDir) throws IOException {
         if (ngffDir.isEmpty()) {
@@ -189,25 +188,27 @@ public class ZarrPixelsService extends ome.io.nio.PixelsService {
 
     /**
      * Retrieve {@link Mask} or {@link Image} URI stored under {@link ExternalInfo}.
+     *
      * @param object loaded {@link Mask} or {@link Image} to check for a URI
      * @return the value of {@link ExternalInfo.lsid}, <code>null</code> if the object
-     * does not have an {@link ExternalInfo} with a valid {@link ExternalInfo.lsid} atttribute
-     * or if {@link ExternalInfo.entityType} is not equal to {@link NGFF_ENTITY_TYPE} or if
-     * {@link ExternalInfo.entityId} is not equal to {@link NGFF_ENTITY_ID}.
+     *     does not have an {@link ExternalInfo} with a valid {@link ExternalInfo.lsid} atttribute
+     *     or if {@link ExternalInfo.entityType} is not equal to {@link NGFF_ENTITY_TYPE} or if
+     *     {@link ExternalInfo.entityId} is not equal to {@link NGFF_ENTITY_ID}.
      */
     public String getUri(IObject object) {
         return getUri(object, NGFF_ENTITY_TYPE, NGFF_ENTITY_ID);
     }
 
     /**
-     * Retrieve {@link Mask} or {@link Image} URI stored under {@link ExternalInfo}
+     * Retrieve {@link Mask} or {@link Image} URI stored under {@link ExternalInfo}.
+     *
      * @param object loaded {@link Mask} or {@link Image} to check for a URI
      * @param targetEntityType expected entityType in the object {@link ExternalInfo}
      * @param targetEntityId expected entityType in the object {@link ExternalInfo}
      * @return the value of {@link ExternalInfo.lsid}, <code>null</code> if the object
-     * does not have an {@link ExternalInfo} with a valid {@link ExternalInfo.lsid} atttribute
-     * or if {@link ExternalInfo.entityType} is not equal to <code>targetEntityType</code> or if
-     * {@link ExternalInfo.entityId} is not equal to <code>targetEntityId</code> .
+     *     does not have an {@link ExternalInfo} with a valid {@link ExternalInfo.lsid} atttribute
+     *     or if {@link ExternalInfo.entityType} is not equal to <code>targetEntityType</code> or if
+     *     {@link ExternalInfo.entityId} is not equal to <code>targetEntityId</code> .
      */
     public String getUri(IObject object, String targetEntityType, Long targetEntityId) {
         ExternalInfo externalInfo = object.getDetails().getExternalInfo();
@@ -259,6 +260,7 @@ public class ZarrPixelsService extends ome.io.nio.PixelsService {
     /**
      * Retrieve the {@link Image} for a particular set of pixels.  Where
      * possible, does not initiate a query.
+     *
      * @param pixels Pixels set to retrieve the {@link Image} for.
      * @return See above.
      */
@@ -273,9 +275,10 @@ public class ZarrPixelsService extends ome.io.nio.PixelsService {
     /**
      * Retrieves the series for a given set of pixels.  Where possible, does not
      * initiate a query.
+     *
      * @param pixels Set of pixels to return the series for.
      * @return The series as specified by the pixels parameters or
-     * <code>0</code> (the first series).
+     *     <code>0</code> (the first series).
      */
     @Override
     protected int getSeries(Pixels pixels) {
@@ -288,9 +291,9 @@ public class ZarrPixelsService extends ome.io.nio.PixelsService {
 
     /**
      * Returns a label image NGFF pixel buffer if it exists.
+     *
      * @param mask Mask to retrieve a pixel buffer for.
      * @return A pixel buffer instance.
-     * @throws IOException
      */
     public ZarrPixelBuffer getLabelImagePixelBuffer(Mask mask)
             throws IOException {
@@ -312,11 +315,12 @@ public class ZarrPixelsService extends ome.io.nio.PixelsService {
 
     /**
      * Creates an NGFF pixel buffer for a given set of pixels.
+     *
      * @param pixels Pixels set to retrieve a pixel buffer for.
-     * <code>true</code> opens as read-write, <code>false</code> opens as
-     * read-only.
+     *     <code>true</code> opens as read-write, <code>false</code> opens as
+     *     read-only.
      * @return An NGFF pixel buffer instance or <code>null</code> if one cannot
-     * be found.
+     *     be found.
      */
     protected ZarrPixelBuffer createOmeNgffPixelBuffer(Pixels pixels) {
         StopWatch t0 = new Slf4JStopWatch("createOmeNgffPixelBuffer()");
@@ -326,7 +330,7 @@ public class ZarrPixelsService extends ome.io.nio.PixelsService {
             if (uri == null) {
                 // Quick exit if we think we're OME-NGFF but there is no URI
                 if (image.getFormat() != null && "OMEXML".equals(image.getFormat().getValue())) {
-                    throw new LockTimeout("Import in progress.", 15*1000, 0);
+                    throw new LockTimeout("Import in progress.", 15 * 1000, 0);
                 }
                 log.debug("No OME-NGFF root");
                 return null;
@@ -341,8 +345,8 @@ public class ZarrPixelsService extends ome.io.nio.PixelsService {
                 return v;
             } catch (Exception e) {
                 log.warn(
-                    "Getting OME-NGFF pixel buffer failed - " +
-                    "attempting to get local data", e);
+                    "Getting OME-NGFF pixel buffer failed - "
+                    + "attempting to get local data", e);
             }
         } catch (IOException e1) {
             log.debug(
@@ -358,10 +362,11 @@ public class ZarrPixelsService extends ome.io.nio.PixelsService {
      * Returns a pixel buffer for a given set of pixels. Either an NGFF pixel
      * buffer, a proprietary ROMIO pixel buffer or a specific pixel buffer
      * implementation.
+     *
      * @param pixels Pixels set to retrieve a pixel buffer for.
      * @param write Whether or not to open the pixel buffer as read-write.
-     * <code>true</code> opens as read-write, <code>false</code> opens as
-     * read-only.
+     *     <code>true</code> opens as read-write, <code>false</code> opens as
+     *     read-only.
      * @return A pixel buffer instance.
      */
     @Override

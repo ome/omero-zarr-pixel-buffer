@@ -15,11 +15,17 @@
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
+
 package com.upplication.s3fs;
 
 import static com.upplication.s3fs.AmazonS3Factory.ACCESS_KEY;
 import static com.upplication.s3fs.AmazonS3Factory.SECRET_KEY;
 
+import com.glencoesoftware.omero.zarr.OmeroAmazonS3ClientFactory;
+import com.glencoesoftware.omero.zarr.OmeroS3FileSystem;
+import com.glencoesoftware.omero.zarr.OmeroS3ReadOnlySeekableByteChannel;
+import com.google.common.base.Preconditions;
+import com.upplication.s3fs.attribute.S3BasicFileAttributes;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.channels.SeekableByteChannel;
@@ -35,12 +41,8 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 
-import com.glencoesoftware.omero.zarr.OmeroAmazonS3ClientFactory;
-import com.glencoesoftware.omero.zarr.OmeroS3FileSystem;
-import com.glencoesoftware.omero.zarr.OmeroS3ReadOnlySeekableByteChannel;
-import com.google.common.base.Preconditions;
-import com.upplication.s3fs.attribute.S3BasicFileAttributes;
 
+/** Subclass of S3FileSystemProvider with performance optimizations. */
 public class OmeroS3FilesystemProvider extends S3FileSystemProvider {
 
     /**
@@ -67,7 +69,9 @@ public class OmeroS3FilesystemProvider extends S3FileSystemProvider {
     private void validateProperties(Properties props) {
         Preconditions.checkArgument(
                 (props.getProperty(ACCESS_KEY) == null && props.getProperty(SECRET_KEY) == null)
-                        || (props.getProperty(ACCESS_KEY) != null && props.getProperty(SECRET_KEY) != null), "%s and %s should both be provided or should both be omitted",
+                        || (props.getProperty(ACCESS_KEY) != null
+                            && props.getProperty(SECRET_KEY) != null),
+                "%s and %s should both be provided or should both be omitted",
                 ACCESS_KEY, SECRET_KEY);
     }
 
@@ -98,7 +102,8 @@ public class OmeroS3FilesystemProvider extends S3FileSystemProvider {
      */
     @Override
     public S3FileSystem createFileSystem(URI uri, Properties props) {
-        return new OmeroS3FileSystem(this, getFileSystemKey(uri, props), getAmazonS3(uri, props), uri.getHost());
+        return new OmeroS3FileSystem(
+            this, getFileSystemKey(uri, props), getAmazonS3(uri, props), uri.getHost());
     }
 
     /**
@@ -139,13 +144,16 @@ public class OmeroS3FilesystemProvider extends S3FileSystemProvider {
      * {@link OmeroS3ReadOnlySeekableByteChannel}.
      */
     @Override
-    public SeekableByteChannel newByteChannel(Path path, Set<? extends OpenOption> options, FileAttribute<?>... attrs) throws IOException {
+    public SeekableByteChannel newByteChannel(
+            Path path, Set<? extends OpenOption> options, FileAttribute<?>... attrs)
+            throws IOException {
         S3Path s3Path = toS3Path(path);
         if (options.isEmpty() || options.contains(StandardOpenOption.READ)) {
-            if (options.contains(StandardOpenOption.WRITE))
+            if (options.contains(StandardOpenOption.WRITE)) {
                 throw new UnsupportedOperationException(
                     "Can't read and write one on channel"
                 );
+            }
             return new OmeroS3ReadOnlySeekableByteChannel(s3Path, options);
         } else {
             return new S3SeekableByteChannel(s3Path, options);
@@ -157,7 +165,8 @@ public class OmeroS3FilesystemProvider extends S3FileSystemProvider {
      * due to its private visibility.
      */
     private S3Path toS3Path(Path path) {
-        Preconditions.checkArgument(path instanceof S3Path, "path must be an instance of %s", S3Path.class.getName());
+        Preconditions.checkArgument(path instanceof S3Path,
+            "path must be an instance of %s", S3Path.class.getName());
         return (S3Path) path;
     }
 
@@ -168,9 +177,11 @@ public class OmeroS3FilesystemProvider extends S3FileSystemProvider {
      * read-only attributes for every file.
      */
     @Override
-    public <A extends BasicFileAttributes> A readAttributes(Path path, Class<A> type, LinkOption... options) throws IOException {
+    public <A extends BasicFileAttributes> A readAttributes(
+        Path path, Class<A> type, LinkOption... options) throws IOException {
         S3Path s3path = (S3Path) path;
-        BasicFileAttributes attrs = new S3BasicFileAttributes(s3path.getKey(), null, 0, true, false);
+        BasicFileAttributes attrs = new S3BasicFileAttributes(
+            s3path.getKey(), null, 0, true, false);
         return type.cast(attrs);
     }
 }

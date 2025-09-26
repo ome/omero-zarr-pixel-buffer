@@ -15,16 +15,18 @@
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
-package com.glencoesoftware.omero.zarr;
 
-import java.io.IOException;
+package com.glencoesoftware.omero.zarr;
 
 import com.amazonaws.services.s3.AmazonS3;
 import com.upplication.s3fs.S3FileSystem;
 import com.upplication.s3fs.S3FileSystemProvider;
+import java.io.IOException;
 
+/** Subclass of S3FileSystem with performance optimizations. */
 public class OmeroS3FileSystem extends S3FileSystem {
 
+    /** Default constructor. */
     public OmeroS3FileSystem(S3FileSystemProvider provider, String key,
             AmazonS3 client, String endpoint) {
         super(provider, key, client, endpoint);
@@ -32,11 +34,11 @@ public class OmeroS3FileSystem extends S3FileSystem {
 
     @Override
     public void close() throws IOException {
-        //No-op
+        // No-op
     }
 
     @Override
     public boolean isOpen() {
-        return true; //Not possible to be closed
+        return true; // Not possible to be closed
     }
 }

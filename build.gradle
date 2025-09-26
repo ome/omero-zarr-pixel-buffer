@@ -2,10 +2,11 @@ plugins {
     id 'java-library'
     id 'eclipse'
     id 'maven-publish'
+    id 'checkstyle'
 }
 
 group = 'com.glencoesoftware.omero'
-version = '0.5.1-SNAPSHOT'
+version = '0.6.0-SNAPSHOT'
 
 sourceCompatibility = 1.11
 targetCompatibility = 1.11
@@ -39,7 +40,7 @@ dependencies {
     implementation 'org.apache.tika:tika-core:1.28.5'
 
     testImplementation 'info.picocli:picocli:4.7.5'
-    testImplementation 'com.glencoesoftware:bioformats2raw:0.9.1'
+    testImplementation 'com.glencoesoftware:bioformats2raw:0.11.0'
 }
 
 test {
@@ -86,4 +87,8 @@ jar {
             "Implementation-Vendor": "Glencoe Software Inc.",
         )
     }
+}
+
+checkstyle {
+    toolVersion = "10.26.1"
 }
