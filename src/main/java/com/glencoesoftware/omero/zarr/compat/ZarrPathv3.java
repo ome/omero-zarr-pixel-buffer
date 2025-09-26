@@ -5,10 +5,10 @@ import java.util.Map;
 
 import org.apache.maven.artifact.versioning.ComparableVersion;
 
-import dev.zarr.zarrjava.ZarrException;
 import dev.zarr.zarrjava.store.StoreHandle;
 import dev.zarr.zarrjava.v3.Array;
 import dev.zarr.zarrjava.v3.Group;
+import dev.zarr.zarrjava.v3.Node;
 
 class ZarrPathv3 implements ZarrPath {
 
@@ -58,8 +58,9 @@ class ZarrPathv3 implements ZarrPath {
     public ZArray getArray() throws IOException {
         Array array;
         try {
-            array = (Array) group.get(key);
-        } catch (ZarrException e) {
+            Node node = group.get(key);
+            array = (Array) node;
+        } catch (Exception e) {
             throw new IOException(e);
         }
         return new ZArrayv3(array);
@@ -74,16 +75,16 @@ class ZarrPathv3 implements ZarrPath {
             return false;
         }
         ZarrPathv3 that = (ZarrPathv3) obj;
-        return path.toString().equals(that.path.toString());
+        return toString().equals(that.toString());
     }
 
     @Override
     public int hashCode() {
-        return path.toString().hashCode();
+        return toString().hashCode();
     }
 
     @Override
     public String toString() {
-        return key == null ? "(Group) "+ path.toString() : "(Array) " + path.toString();
+        return key == null ? "(Group) "+ path.toString() : "(Array) " + path.toString() + ":" + key;
     }
 }
