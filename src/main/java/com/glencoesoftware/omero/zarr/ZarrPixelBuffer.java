@@ -18,10 +18,11 @@
 
 package com.glencoesoftware.omero.zarr;
 
-import com.bc.zarr.DataType;
-import com.bc.zarr.ZarrArray;
 import com.github.benmanes.caffeine.cache.AsyncLoadingCache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import com.glencoesoftware.omero.zarr.compat.ZArray;
+import com.glencoesoftware.omero.zarr.compat.ZarrPath;
+
 import java.awt.Dimension;
 import java.io.IOException;
 import java.nio.BufferOverflowException;

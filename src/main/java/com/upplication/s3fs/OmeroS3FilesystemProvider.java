@@ -21,6 +21,7 @@ package com.upplication.s3fs;
 import static com.upplication.s3fs.AmazonS3Factory.ACCESS_KEY;
 import static com.upplication.s3fs.AmazonS3Factory.SECRET_KEY;
 
+import com.amazonaws.services.s3.AmazonS3;
 import com.glencoesoftware.omero.zarr.OmeroAmazonS3ClientFactory;
 import com.glencoesoftware.omero.zarr.OmeroS3FileSystem;
 import com.glencoesoftware.omero.zarr.OmeroS3ReadOnlySeekableByteChannel;

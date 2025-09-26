@@ -18,22 +18,14 @@
 
 package com.glencoesoftware.omero.zarr;
 
-import com.bc.zarr.ZarrArray;
-import com.bc.zarr.ZarrGroup;
 import com.github.benmanes.caffeine.cache.AsyncLoadingCache;
 import com.github.benmanes.caffeine.cache.Caffeine;
-import com.google.common.base.Splitter;
-import com.upplication.s3fs.OmeroS3FilesystemProvider;
+import com.glencoesoftware.omero.zarr.compat.ZArray;
+import com.glencoesoftware.omero.zarr.compat.ZarrInfo;
+import com.glencoesoftware.omero.zarr.compat.ZarrPath;
 import java.io.File;
 import java.io.IOException;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.nio.file.FileSystem;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
 import ome.api.IQuery;
 import ome.conditions.LockTimeout;
 import ome.io.nio.BackOff;
