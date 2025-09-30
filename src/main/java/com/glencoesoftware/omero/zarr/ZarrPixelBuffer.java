@@ -22,7 +22,6 @@ import com.github.benmanes.caffeine.cache.AsyncLoadingCache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.glencoesoftware.omero.zarr.compat.ZArray;
 import com.glencoesoftware.omero.zarr.compat.ZarrPath;
-
 import java.awt.Dimension;
 import java.io.IOException;
 import java.nio.BufferOverflowException;
@@ -55,7 +54,7 @@ public class ZarrPixelBuffer implements PixelBuffer {
     /** Reference to the pixels. */
     private final Pixels pixels;
 
-    /** Root of the OME-NGFF multiscale we are operating on */
+    /** Root of the OME-NGFF multiscale we are operating on. */
     private final ZarrPath root;
 
     /** Requested resolution level. */
@@ -73,7 +72,7 @@ public class ZarrPixelBuffer implements PixelBuffer {
     /** Zarr attributes present on the root group. */
     private final Map<String, Object> rootGroupAttributes;
 
-    /** Zarr array corresponding to the current resolution level */
+    /** Zarr array corresponding to the current resolution level. */
     private ZArray array;
 
     /**
@@ -122,12 +121,13 @@ public class ZarrPixelBuffer implements PixelBuffer {
         this.isRemote = root.toString().startsWith("s3://") ? true : false;
         try {
             Map<String, Object> tmp = this.zarrMetadataCache.get(this.root).get();
-            if (tmp.containsKey("ome")) { // for ngff challenge data attr are often nested within "ome" key
+            if (tmp.containsKey("ome")) { 
+                // for ngff challenge data attr are often nested within "ome" key
                 rootGroupAttributes = (Map<String, Object>) tmp.get("ome");
             } else {
                 rootGroupAttributes = tmp;
             }
-        } catch (ExecutionException|InterruptedException e) {
+        } catch (ExecutionException | InterruptedException e) {
             throw new IOException(e);
         }
         if (!rootGroupAttributes.containsKey("multiscales")) {
@@ -276,7 +276,7 @@ public class ZarrPixelBuffer implements PixelBuffer {
         List<int[]> chunks = new ArrayList<int[]>();
         for (Map<String, String> dataset : datasets) {
             ZarrPath dsPath = root.resolve(dataset.get("path"));
-            ZArray resolutionArray = dsPath.getArray(); //new ZArrayv2(ZarrArray.open((Path)dsPath.getPath()));
+            ZArray resolutionArray = dsPath.getArray();
             int[] shape = resolutionArray.getChunks();
             chunks.add(shape);
         }

@@ -1,13 +1,10 @@
 package com.glencoesoftware.omero.zarr.compat;
 
+import com.bc.zarr.ZarrArray;
+import com.bc.zarr.ZarrGroup;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Map;
-
-import org.apache.maven.artifact.versioning.ComparableVersion;
-
-import com.bc.zarr.ZarrArray;
-import com.bc.zarr.ZarrGroup;
 
 class ZarrPathv2 implements ZarrPath {
 
@@ -23,18 +20,13 @@ class ZarrPathv2 implements ZarrPath {
     }
 
     @Override
-    public ComparableVersion getVersion() {
-        return ZarrInfo.ZARR_V2;
-    }
-
-    @Override
     public Map<String, Object> getMetadata() throws IOException {
         return ZarrGroup.open(path).getAttributes();
     }
 
     @Override
     public ZArray getArray() throws IOException {
-       return new ZArrayv2(ZarrArray.open(path));
+        return new ZArrayv2(ZarrArray.open(path));
     }
 
     @Override

@@ -1,14 +1,11 @@
 package com.glencoesoftware.omero.zarr.compat;
 
-import java.io.IOException;
-import java.util.Map;
-
-import org.apache.maven.artifact.versioning.ComparableVersion;
-
 import dev.zarr.zarrjava.store.StoreHandle;
 import dev.zarr.zarrjava.v3.Array;
 import dev.zarr.zarrjava.v3.Group;
 import dev.zarr.zarrjava.v3.Node;
+import java.io.IOException;
+import java.util.Map;
 
 class ZarrPathv3 implements ZarrPath {
 
@@ -42,11 +39,6 @@ class ZarrPathv3 implements ZarrPath {
     @Override
     public ZarrPath resolve(String resolvePath) {
         return new ZarrPathv3(this, resolvePath);
-    }
-
-    @Override
-    public ComparableVersion getVersion() {
-        return ZarrInfo.ZARR_V3;
     }
 
     @Override
@@ -85,6 +77,7 @@ class ZarrPathv3 implements ZarrPath {
 
     @Override
     public String toString() {
-        return key == null ? "(Group) "+ path.toString() : "(Array) " + path.toString() + ":" + key;
+        return key == null ? "(Group) " + path.toString()
+            : "(Array) " + path.toString() + ":" + key;
     }
 }

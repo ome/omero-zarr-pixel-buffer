@@ -1,15 +1,13 @@
 package com.glencoesoftware.omero.zarr.compat;
 
-import java.io.IOException;
-
 import com.bc.zarr.DataType;
 import com.bc.zarr.ZarrArray;
-
+import java.io.IOException;
 import loci.formats.FormatTools;
 import ucar.ma2.InvalidRangeException;
 
 class ZArrayv2 implements ZArray {
-    
+
     private ZarrArray array;
 
     public ZArrayv2(ZarrArray array) {
@@ -27,7 +25,8 @@ class ZArrayv2 implements ZArray {
     }
 
     @Override
-    public void read(byte[] buffer, int[] shape, int[] offset) throws IOException, InvalidRangeException {
+    public void read(byte[] buffer, int[] shape, int[] offset)
+        throws IOException, InvalidRangeException {
         array.read(buffer, shape, offset);
     }
 
@@ -36,11 +35,12 @@ class ZArrayv2 implements ZArray {
         return array.read(shape, offset);
     }
 
-    @Override
     /**
      * Get Bio-Formats/OMERO pixels type for buffer.
+     *
      * @return See above.
      */
+    @Override
     public int getPixelsType() {
         DataType dataType = array.getDataType();
         switch (dataType) {
@@ -61,8 +61,7 @@ class ZArrayv2 implements ZArray {
             case f8:
                 return FormatTools.DOUBLE;
             default:
-                throw new IllegalArgumentException(
-                        "Data type " + dataType + " not supported");
+                throw new IllegalArgumentException("Data type " + dataType + " not supported");
         }
     }
 }

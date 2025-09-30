@@ -1,11 +1,10 @@
 package com.glencoesoftware.omero.zarr.compat;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-
 import dev.zarr.zarrjava.ZarrException;
 import dev.zarr.zarrjava.v3.Array;
 import dev.zarr.zarrjava.v3.DataType;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import loci.formats.FormatTools;
 import ucar.ma2.InvalidRangeException;
 
@@ -36,17 +35,18 @@ class ZArrayv3 implements ZArray {
     }
 
     @Override
-    public void read(byte[] buffer, int[] shape, int[] offset) throws IOException, InvalidRangeException {
-       try {
-        long[] offsetLong = new long[offset.length];
-        for (int i = 0; i < offset.length; i++) {
-            offsetLong[i] = offset[i];
+    public void read(byte[] buffer, int[] shape, int[] offset)
+        throws IOException, InvalidRangeException {
+        try {
+            long[] offsetLong = new long[offset.length];
+            for (int i = 0; i < offset.length; i++) {
+                offsetLong[i] = offset[i];
+            }
+            ByteBuffer b = array.read(offsetLong, shape).getDataAsByteBuffer();
+            System.arraycopy(b.array(), 0, buffer, 0, buffer.length);
+        } catch (ZarrException e) {
+            throw new IOException(e);
         }
-        ByteBuffer b = array.read(offsetLong, shape).getDataAsByteBuffer();
-        System.arraycopy(b.array(), 0, buffer, 0, buffer.length);
-       } catch (ZarrException e) {
-        throw new IOException(e);
-       }
     }
 
     @Override
@@ -83,8 +83,7 @@ class ZArrayv3 implements ZArray {
             case FLOAT64:
                 return FormatTools.DOUBLE;
             default:
-                throw new IllegalArgumentException(
-                        "Data type " + dataType + " not supported");
+                throw new IllegalArgumentException("Data type " + dataType + " not supported");
         }
     }
 }
