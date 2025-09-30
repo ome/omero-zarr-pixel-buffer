@@ -18,11 +18,9 @@
 
 package com.glencoesoftware.omero.zarr;
 
-import static omero.rtypes.rdouble;
 import static omero.rtypes.rlong;
 import static omero.rtypes.rstring;
 
-import com.glencoesoftware.omero.zarr.ZarrPixelsService;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;

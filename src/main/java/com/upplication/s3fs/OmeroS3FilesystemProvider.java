@@ -21,6 +21,7 @@ package com.upplication.s3fs;
 import static com.upplication.s3fs.AmazonS3Factory.ACCESS_KEY;
 import static com.upplication.s3fs.AmazonS3Factory.SECRET_KEY;
 
+import com.amazonaws.services.s3.AmazonS3;
 import com.glencoesoftware.omero.zarr.OmeroAmazonS3ClientFactory;
 import com.glencoesoftware.omero.zarr.OmeroS3FileSystem;
 import com.glencoesoftware.omero.zarr.OmeroS3ReadOnlySeekableByteChannel;
@@ -104,6 +105,15 @@ public class OmeroS3FilesystemProvider extends S3FileSystemProvider {
     public S3FileSystem createFileSystem(URI uri, Properties props) {
         return new OmeroS3FileSystem(
             this, getFileSystemKey(uri, props), getAmazonS3(uri, props), uri.getHost());
+    }
+
+    /**
+     * Create an Amazon S3 client from the given URI and environment.
+     */
+    public AmazonS3 createAmazonS3(URI uri, Map<String, ?> env) {
+        Properties props = getProperties(uri, env);
+        validateProperties(props);
+        return getAmazonS3(uri, props);
     }
 
     /**
