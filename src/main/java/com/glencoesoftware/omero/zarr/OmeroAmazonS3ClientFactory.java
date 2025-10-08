@@ -18,65 +18,63 @@
 
 package com.glencoesoftware.omero.zarr;
 
-import com.amazonaws.auth.AWSCredentialsProvider;
-import com.amazonaws.auth.AWSCredentialsProviderChain;
-import com.amazonaws.auth.AWSStaticCredentialsProvider;
-import com.amazonaws.auth.AnonymousAWSCredentials;
-import com.amazonaws.auth.EC2ContainerCredentialsProviderWrapper;
-import com.amazonaws.auth.profile.ProfileCredentialsProvider;
-import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration;
-import com.amazonaws.regions.Regions;
-import com.amazonaws.services.s3.AmazonS3;
-import com.amazonaws.services.s3.AmazonS3ClientBuilder;
-import com.amazonaws.util.AwsHostNameUtils;
-import com.upplication.s3fs.AmazonS3ClientFactory;
 import java.net.URI;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Properties;
+import org.carlspring.cloud.storage.s3fs.S3ClientFactory;
 import org.slf4j.LoggerFactory;
+import software.amazon.awssdk.auth.credentials.AnonymousCredentialsProvider;
+import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
+import software.amazon.awssdk.auth.credentials.AwsCredentialsProviderChain;
+import software.amazon.awssdk.auth.credentials.InstanceProfileCredentialsProvider;
+import software.amazon.awssdk.auth.credentials.ProfileCredentialsProvider;
+import software.amazon.awssdk.awscore.util.AwsHostNameUtils;
+import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
+import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.s3.S3Client;
 
 /**
  * Subclass which maps an URI into a set of credentials to use for the client.
  */
-public class OmeroAmazonS3ClientFactory extends AmazonS3ClientFactory {
+public class OmeroAmazonS3ClientFactory extends S3ClientFactory {
 
-    private static final org.slf4j.Logger log =
-            LoggerFactory.getLogger(OmeroAmazonS3ClientFactory.class);
+    private static final org.slf4j.Logger log = LoggerFactory
+        .getLogger(OmeroAmazonS3ClientFactory.class);
 
-    private static final Map<String, AmazonS3> bucketClientMap = new HashMap<>();
+    private static final Map<String, S3Client> bucketClientMap = new HashMap<>();
 
     @Override
-    protected AWSCredentialsProvider getCredentialsProvider(Properties props) {
+    protected AwsCredentialsProvider getCredentialsProvider(Properties props) {
         // If AWS Environment or System Properties are set, throw an exception
         // so users will know they are not supported
         if (System.getenv("AWS_ACCESS_KEY_ID") != null
-                || System.getenv("AWS_SECRET_ACCESS_KEY") != null
-                || System.getenv("AWS_SESSION_TOKEN") != null
-                || System.getProperty("aws.accessKeyId") != null
-                || System.getProperty("aws.secretAccessKey") != null) {
+            || System.getenv("AWS_SECRET_ACCESS_KEY") != null
+            || System.getenv("AWS_SESSION_TOKEN") != null
+            || System.getProperty("aws.accessKeyId") != null
+            || System.getProperty("aws.secretAccessKey") != null) {
             throw new RuntimeException("AWS credentials supplied by environment variables"
-                    + " or Java system properties are not supported."
-                    + " Please use either named profiles or instance"
-                    + " profile credentials.");
+                + " or Java system properties are not supported."
+                + " Please use either named profiles or instance" + " profile credentials.");
         }
-        boolean anonymous = Boolean.parseBoolean(
-                (String) props.get("s3fs_anonymous"));
+        boolean anonymous = Boolean.parseBoolean((String) props.get("s3fs_anonymous"));
         if (anonymous) {
             log.debug("Using anonymous credentials");
-            return new AWSStaticCredentialsProvider(
-                    new AnonymousAWSCredentials());
+            return AnonymousCredentialsProvider.create();
         } else {
-            String profileName =
-                    (String) props.get("s3fs_credential_profile_name");
+            String profileName = (String) props.get("s3fs_credential_profile_name");
             // Same instances and order from DefaultAWSCredentialsProviderChain
-            return new AWSCredentialsProviderChain(
-                    new ProfileCredentialsProvider(profileName),
-                    new EC2ContainerCredentialsProviderWrapper()
-            );
+            ProfileCredentialsProvider.Builder profileBuilder = ProfileCredentialsProvider
+                .builder();
+            if (profileName != null) {
+                profileBuilder.profileName(profileName);
+            }
+            return AwsCredentialsProviderChain.of(profileBuilder.build(),
+                InstanceProfileCredentialsProvider.create());
         }
     }
-    
+
     /**
      * Retrieves the bucket name from a given URI.
      *
@@ -97,12 +95,12 @@ public class OmeroAmazonS3ClientFactory extends AmazonS3ClientFactory {
      * @param uri The URI to handle
      * @return The region
      */
-    private String getRegionFromUri(URI uri) {
-        String region = AwsHostNameUtils.parseRegion(uri.getHost(), null);
-        if (region != null) {
-            return region;
+    private Region getRegionFromUri(URI uri) {
+        Optional<Region> region = AwsHostNameUtils.parseSigningRegion(uri.getHost(), null);
+        if (region.isPresent()) {
+            return region.get();
         }
-        return Regions.DEFAULT_REGION.getName();
+        return Region.US_EAST_1;
     }
 
     /**
@@ -116,7 +114,7 @@ public class OmeroAmazonS3ClientFactory extends AmazonS3ClientFactory {
     }
 
     @Override
-    public synchronized AmazonS3 getAmazonS3(URI uri, Properties props) {
+    public synchronized S3Client getS3Client(URI uri, Properties props) {
         // Check if we have a S3 client for this bucket
         String bucket = getBucketFromUri(uri);
         if (bucketClientMap.containsKey(bucket)) {
@@ -124,13 +122,10 @@ public class OmeroAmazonS3ClientFactory extends AmazonS3ClientFactory {
             return bucketClientMap.get(bucket);
         }
         log.info("Creating client for bucket " + bucket);
-        AmazonS3 client = AmazonS3ClientBuilder.standard()
-            .withCredentials(getCredentialsProvider(props))
-            .withClientConfiguration(getClientConfiguration(props))
-            .withMetricsCollector(getRequestMetricsCollector(props))
-            .withEndpointConfiguration(
-                new EndpointConfiguration(getEndPointFromUri(uri), getRegionFromUri(uri)))
-            .build();
+        ClientOverrideConfiguration cconf = getOverrideConfiguration(props);
+        S3Client client = S3Client.builder().credentialsProvider(getCredentialsProvider(props))
+            .region(getRegionFromUri(uri)).endpointOverride(URI.create(getEndPointFromUri(uri)))
+            .overrideConfiguration(cconf).build();
         bucketClientMap.put(bucket, client);
         return client;
     }

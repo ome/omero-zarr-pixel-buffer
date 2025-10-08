@@ -1,9 +1,7 @@
 package com.glencoesoftware.omero.zarr.compat;
 
-import com.amazonaws.services.s3.AmazonS3;
 import com.bc.zarr.ZarrGroup;
 import com.google.common.base.Splitter;
-import com.upplication.s3fs.OmeroS3FilesystemProvider;
 import dev.zarr.zarrjava.store.FilesystemStore;
 import dev.zarr.zarrjava.store.HttpStore;
 import dev.zarr.zarrjava.store.S3Store;
@@ -22,7 +20,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.apache.maven.artifact.versioning.ComparableVersion;
+import org.carlspring.cloud.storage.s3fs.OmeroS3FilesystemProvider;
 import org.slf4j.LoggerFactory;
+import software.amazon.awssdk.services.s3.S3Client;
 
 /**
  * Tries to determine some properties of the zarr path, if it's remote or local, and the zarr and
@@ -259,7 +259,7 @@ public class ZarrInfo {
                 String anonymous = Optional.ofNullable(params.get("anonymous")).orElse("false");
                 env.put("s3fs_anonymous", anonymous);
                 OmeroS3FilesystemProvider fsp = new OmeroS3FilesystemProvider();
-                AmazonS3 client = fsp.createAmazonS3(uri, env);
+                S3Client client = fsp.createAmazonS3(uri, env);
 
                 // Create s3 client manually:
                 // AmazonS3 client = AmazonS3ClientBuilder.standard()

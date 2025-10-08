@@ -18,11 +18,6 @@
 
 package com.glencoesoftware.omero.zarr;
 
-import com.amazonaws.services.s3.model.GetObjectRequest;
-import com.amazonaws.services.s3.model.S3Object;
-import com.amazonaws.services.s3.model.S3ObjectInputStream;
-import com.upplication.s3fs.S3Path;
-import com.upplication.s3fs.S3ReadOnlySeekableByteChannel;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -37,14 +32,16 @@ import java.nio.file.StandardOpenOption;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
+import org.carlspring.cloud.storage.s3fs.S3Path;
 import org.perf4j.slf4j.Slf4JStopWatch;
-
+import software.amazon.awssdk.core.ResponseInputStream;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 
 /**
- * Overridden, hybrid version of the implementation from
- * {@link S3ReadOnlySeekableByteChannel}.  Due to its private visibility on
- * nearly all the important instance variables much of the implementation is
- * copied verbatim.
+ * Overridden, hybrid version of the implementation from {@link S3ReadOnlySeekableByteChannel}. Due
+ * to its private visibility on nearly all the important instance variables much of the
+ * implementation is copied verbatim.
  */
 public class OmeroS3ReadOnlySeekableByteChannel implements SeekableByteChannel {
 
@@ -55,45 +52,39 @@ public class OmeroS3ReadOnlySeekableByteChannel implements SeekableByteChannel {
     private long position = 0;
 
     /**
-     * Overridden, hybrid version of the implementation from
-     * {@link S3ReadOnlySeekableByteChannel}.  Our implementation loads the
-     * entire object in full from S3 without checks for length during
+     * Overridden, hybrid version of the implementation from {@link S3ReadOnlySeekableByteChannel}.
+     * Our implementation loads the entire object in full from S3 without checks for length during
      * object construction.
      */
     public OmeroS3ReadOnlySeekableByteChannel(S3Path path, Set<? extends OpenOption> options)
-          throws IOException {
+        throws IOException {
         this.options = Collections.unmodifiableSet(new HashSet<>(options));
 
         if (this.options.contains(StandardOpenOption.WRITE)
-                || this.options.contains(StandardOpenOption.CREATE)
-                || this.options.contains(StandardOpenOption.CREATE_NEW)
-                || this.options.contains(StandardOpenOption.APPEND)
-            ) {
+            || this.options.contains(StandardOpenOption.CREATE)
+            || this.options.contains(StandardOpenOption.CREATE_NEW)
+            || this.options.contains(StandardOpenOption.APPEND)) {
             throw new ReadOnlyFileSystemException();
         }
 
         String bucketName = path.getFileStore().name();
         String key = path.getKey();
-        GetObjectRequest getObjectRequest =
-            new GetObjectRequest(bucketName, key);
+        GetObjectRequest getObjectRequest = GetObjectRequest.builder().bucket(bucketName).key(key)
+            .build();
 
-        Slf4JStopWatch t0 = new Slf4JStopWatch(
-                "OmeroS3ReadOnlySeekableByteChannel.getObject",
-                "s3://" + bucketName + "/" + key);
+        Slf4JStopWatch t0 = new Slf4JStopWatch("OmeroS3ReadOnlySeekableByteChannel.getObject",
+            "s3://" + bucketName + "/" + key);
         try {
-            S3Object s3Object =
-                path
-                    .getFileSystem()
-                    .getClient()
-                    .getObject(getObjectRequest);
+            ResponseInputStream<GetObjectResponse> s3Object = path.getFileSystem().getClient()
+                .getObject(getObjectRequest);
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
             // The return value of getObjectContent should be copied and
             // the stream closed as quickly as possible. See
             // https://docs.aws.amazon.com/AWSJavaSDK/latest/javadoc/com/amazonaws/services/s3/model/S3Object.html#getObjectContent--
-            try (S3ObjectInputStream s3Stream = s3Object.getObjectContent()) {
+            try (s3Object) {
                 byte[] readBuf = new byte[1024 * 1024];
                 int readLen = 0;
-                while ((readLen = s3Stream.read(readBuf)) > 0) {
+                while ((readLen = s3Object.read(readBuf)) > 0) {
                     outputStream.write(readBuf, 0, readLen);
                 }
             }
@@ -108,9 +99,8 @@ public class OmeroS3ReadOnlySeekableByteChannel implements SeekableByteChannel {
     }
 
     /**
-     * An exact copy of the implementation from
-     * {@link S3ReadOnlySeekableByteChannel} due to its instance variable
-     * private visibility.
+     * An exact copy of the implementation from {@link S3ReadOnlySeekableByteChannel} due to its
+     * instance variable private visibility.
      */
     @Override
     public boolean isOpen() {
@@ -118,9 +108,8 @@ public class OmeroS3ReadOnlySeekableByteChannel implements SeekableByteChannel {
     }
 
     /**
-     * An exact copy of the implementation from
-     * {@link S3ReadOnlySeekableByteChannel} due to its instance variable
-     * private visibility.
+     * An exact copy of the implementation from {@link S3ReadOnlySeekableByteChannel} due to its
+     * instance variable private visibility.
      */
     @Override
     public long position() {
@@ -128,20 +117,17 @@ public class OmeroS3ReadOnlySeekableByteChannel implements SeekableByteChannel {
     }
 
     /**
-     * Overridden, hybrid version of the implementation from
-     * {@link S3ReadOnlySeekableByteChannel}.  Our implementation does not
-     * support repositioning within the channel.
+     * Overridden, hybrid version of the implementation from {@link S3ReadOnlySeekableByteChannel}.
+     * Our implementation does not support repositioning within the channel.
      */
     @Override
-    public SeekableByteChannel position(long targetPosition)
-            throws IOException {
+    public SeekableByteChannel position(long targetPosition) throws IOException {
         throw new UnsupportedOperationException();
     }
 
     /**
-     * An exact copy of the implementation from
-     * {@link S3ReadOnlySeekableByteChannel} due to its instance variable
-     * private visibility.
+     * An exact copy of the implementation from {@link S3ReadOnlySeekableByteChannel} due to its
+     * instance variable private visibility.
      */
     @Override
     public int read(ByteBuffer dst) throws IOException {
@@ -153,9 +139,8 @@ public class OmeroS3ReadOnlySeekableByteChannel implements SeekableByteChannel {
     }
 
     /**
-     * An exact copy of the implementation from
-     * {@link S3ReadOnlySeekableByteChannel} due to its instance variable
-     * private visibility.
+     * An exact copy of the implementation from {@link S3ReadOnlySeekableByteChannel} due to its
+     * instance variable private visibility.
      */
     @Override
     public SeekableByteChannel truncate(long size) throws IOException {
@@ -163,9 +148,8 @@ public class OmeroS3ReadOnlySeekableByteChannel implements SeekableByteChannel {
     }
 
     /**
-     * An exact copy of the implementation from
-     * {@link S3ReadOnlySeekableByteChannel} due to its instance variable
-     * private visibility.
+     * An exact copy of the implementation from {@link S3ReadOnlySeekableByteChannel} due to its
+     * instance variable private visibility.
      */
     @Override
     public int write(ByteBuffer src) throws IOException {
@@ -173,9 +157,8 @@ public class OmeroS3ReadOnlySeekableByteChannel implements SeekableByteChannel {
     }
 
     /**
-     * An exact copy of the implementation from
-     * {@link S3ReadOnlySeekableByteChannel} due to its instance variable
-     * private visibility.
+     * An exact copy of the implementation from {@link S3ReadOnlySeekableByteChannel} due to its
+     * instance variable private visibility.
      */
     @Override
     public long size() throws IOException {
@@ -183,9 +166,8 @@ public class OmeroS3ReadOnlySeekableByteChannel implements SeekableByteChannel {
     }
 
     /**
-     * An exact copy of the implementation from
-     * {@link S3ReadOnlySeekableByteChannel} due to its instance variable
-     * private visibility.
+     * An exact copy of the implementation from {@link S3ReadOnlySeekableByteChannel} due to its
+     * instance variable private visibility.
      */
     @Override
     public void close() throws IOException {

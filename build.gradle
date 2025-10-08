@@ -20,6 +20,7 @@ tasks.withType(JavaCompile) {
 }
 
 repositories {
+    mavenLocal()
     mavenCentral()
     maven {
         name 'Unidata'
@@ -39,47 +40,29 @@ repositories {
     }
 }
 
-configurations.all {
-    resolutionStrategy {
-        // Force all Jackson dependencies to version 2.14.2
-        eachDependency { DependencyResolveDetails details ->
-            if (details.requested.group == 'com.fasterxml.jackson.core' ||
-                details.requested.group == 'com.fasterxml.jackson.dataformat' ||
-                details.requested.group == 'com.fasterxml.jackson.datatype' ||
-                details.requested.group == 'com.fasterxml.jackson.module' ||
-                details.requested.group == 'com.fasterxml.jackson.jr') {
-                details.useVersion '2.14.2'
-            }
-        }
-        
-        // Explicit force for common Jackson modules
-        force 'com.fasterxml.jackson.core:jackson-core:2.14.2'
-        force 'com.fasterxml.jackson.core:jackson-databind:2.14.2'
-        force 'com.fasterxml.jackson.core:jackson-annotations:2.14.2'
-    }
-}
-
 dependencies {
     api 'org.openmicroscopy:omero-blitz:5.8.3'
-    
+
     implementation 'com.github.ben-manes.caffeine:caffeine:3.1.8'
     implementation 'dev.zarr:jzarr:0.4.2'
-    implementation 'org.lasersonlab:s3fs:2.2.3'
-    implementation 'com.amazonaws:aws-java-sdk-s3:1.12.659'
+
+    implementation 'org.carlspring.cloud.aws:s3fs-nio:3.0.0'
+
+    implementation 'software.amazon.awssdk:s3:2.34.6'
     implementation 'org.apache.tika:tika-core:1.28.5'
     implementation 'net.java.dev.jna:jna:5.10.0'
     implementation 'ome:formats-gpl:7.3.1'
     implementation 'info.picocli:picocli:4.7.5'
     implementation 'com.univocity:univocity-parsers:2.8.4'
-    implementation 'dev.zarr:zarr-java:0.0.4'
+    implementation 'dev.zarr:zarr-java:0.0.5-SNAPSHOT'
     implementation 'javax.xml.bind:jaxb-api:2.3.0'
     implementation group: 'ch.qos.logback', name: 'logback-classic', version: '1.3.14'
     implementation group: 'ch.qos.logback', name: 'logback-core', version: '1.3.14'
     implementation 'org.apache.maven:maven-artifact:3.9.4'
 
-    implementation 'com.fasterxml.jackson.core:jackson-core:2.14.2'
-    implementation 'com.fasterxml.jackson.core:jackson-databind:2.14.2'
- 
+    implementation 'com.fasterxml.jackson.core:jackson-core:2.20.0'
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.20.0'
+
     testImplementation 'info.picocli:picocli:4.7.5'
     testImplementation 'com.glencoesoftware:bioformats2raw:0.11.0'
 }
