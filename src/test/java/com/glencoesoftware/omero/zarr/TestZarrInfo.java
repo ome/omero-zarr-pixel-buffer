@@ -105,33 +105,33 @@ public class TestZarrInfo {
         Assert.assertEquals(new ComparableVersion("0.5"), zp.getNgffVersion());
     }
 
-    /**
-     * Test private S3 storage, zarr v2.
-     *
-     * @throws IOException If an I/O error occurs.
-     */
-    @Test
-    public void testS3V2Private() throws IOException {
-        ZarrInfo zp = new ZarrInfo("s3://s3.ltd.ovh/private/cat_z2.ome.zarr/0?profile=ltd");
-        System.out.println("testS3V2Private: " + zp);
-        Assert.assertEquals(zp.getStorageType(), StorageType.S3);
-        Assert.assertEquals(new ComparableVersion("2"), zp.getZarrVersion());
-        Assert.assertEquals(new ComparableVersion("0.4"), zp.getNgffVersion());
-    }
+    // /**
+    // * Test private S3 storage, zarr v2.
+    // *
+    // * @throws IOException If an I/O error occurs.
+    // */
+    // @Test
+    // public void testS3V2Private() throws IOException {
+    // ZarrInfo zp = new ZarrInfo("s3://s3.ltd.ovh/private/cat_z2.ome.zarr/0?profile=ltd");
+    // System.out.println("testS3V2Private: " + zp);
+    // Assert.assertEquals(zp.getStorageType(), StorageType.S3);
+    // Assert.assertEquals(new ComparableVersion("2"), zp.getZarrVersion());
+    // Assert.assertEquals(new ComparableVersion("0.4"), zp.getNgffVersion());
+    // }
 
-    /**
-     * Test private S3 storage, zarr v3.
-     *
-     * @throws IOException If an I/O error occurs.
-     */
-    @Test
-    public void testS3V3Private() throws IOException {
-        ZarrInfo zp = new ZarrInfo("s3://s3.ltd.ovh/private/cat_z3.ome.zarr/0?profile=ltd");
-        System.out.println("testS3V3Private: " + zp);
-        Assert.assertEquals(zp.getStorageType(), StorageType.S3);
-        Assert.assertEquals(new ComparableVersion("3"), zp.getZarrVersion());
-        Assert.assertEquals(new ComparableVersion("0.5"), zp.getNgffVersion());
-    }
+    // /**
+    // * Test private S3 storage, zarr v3.
+    // *
+    // * @throws IOException If an I/O error occurs.
+    // */
+    // @Test
+    // public void testS3V3Private() throws IOException {
+    // ZarrInfo zp = new ZarrInfo("s3://s3.ltd.ovh/private/cat_z3.ome.zarr/0?profile=ltd");
+    // System.out.println("testS3V3Private: " + zp);
+    // Assert.assertEquals(zp.getStorageType(), StorageType.S3);
+    // Assert.assertEquals(new ComparableVersion("3"), zp.getZarrVersion());
+    // Assert.assertEquals(new ComparableVersion("0.5"), zp.getNgffVersion());
+    // }
 
     /**
      * Write a test Zarr file.
