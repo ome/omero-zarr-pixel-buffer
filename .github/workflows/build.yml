@@ -25,6 +25,16 @@ jobs:
           distribution: 'zulu'
       - name: Install dependency
         run: sudo apt-get install libblosc1
+      - name: Checkout zarr-java
+        uses: actions/checkout@v4
+        with:
+          repository: zarr-developers/zarr-java
+          path: zarr-java
+      - name: Build and install zarr-java
+        run: |
+          cd zarr-java
+          mvn clean install -DskipTests -Dgpg.skip=true
+          cd ..
       - name: Run commands
         run: |
           ./gradlew ${{ env.gradle_commands }}
