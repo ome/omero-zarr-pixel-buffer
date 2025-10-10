@@ -38,19 +38,17 @@ jobs:
       - name: Run commands
         run: |
           ./gradlew ${{ env.gradle_commands }}
-      - name: Copy zarr-java artifacts
+          cp build/libs/*.jar build/
+      - name: Get dependencies
         if: matrix.java == 11
         run: |
-          mkdir -p build/zarr-java
-          cp -v $HOME/.m2/repository/dev/zarr/zarr-java/0.0.5-SNAPSHOT/*.jar build/zarr-java/ || echo "No zarr-java JARs found"
-          ls -la build/zarr-java/
+          ./gradlew copyDependencies
+          cp -v build/libs/*.jar libs/
       - name: Upload artifacts
         if: matrix.java == 11
         uses: actions/upload-artifact@v4
         with:
-          name: build-artifacts
+          name: artifacts
           path: |
-            build/libs/*.jar
-            build/distributions/*
-            build/zarr-java/*.jar
-          include-hidden-files: true
+            libs/*.jar
+            build/*.jar
