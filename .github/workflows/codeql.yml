@@ -32,6 +32,19 @@ jobs:
         - language: java-kotlin
           build-mode: autobuild
     steps:
+    # Build zarr-java first
+    - name: Install dependency
+      run: sudo apt-get install libblosc1
+    - name: Checkout zarr-java
+      uses: actions/checkout@v4
+      with:
+        repository: zarr-developers/zarr-java
+        path: zarr-java
+    - name: Build and install zarr-java
+      run: |
+        cd zarr-java
+        mvn clean install -DskipTests -Dgpg.skip=true
+    # Then do codeql stuff
     - name: Checkout repository
       uses: actions/checkout@v4
 
