@@ -1,5 +1,6 @@
 package com.bc.zarr.storage;
 
+import com.amazonaws.services.s3.model.AmazonS3Exception;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -8,12 +9,21 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-import com.amazonaws.services.s3.model.AmazonS3Exception;
-
+/**
+ * Overridden FileSystemStore. Implemented to catch exceptions
+ * when missing chunks are encountered rather than allowing them to propogate
+ * causing errors.
+ */
 public class OmeroFileSystemStore extends FileSystemStore {
 
-    private Path omeroInternalRoot; //Field in FileSystemStore is private
+    private Path omeroInternalRoot; // Field in FileSystemStore is private
     
+    /**
+     * Constructor.
+     *
+     * @param path The path to the zarr root
+     * @param fileSystem The FileSystem used to access the file
+     */
     public OmeroFileSystemStore(String path, FileSystem fileSystem) {
         super(path, fileSystem);
         if (fileSystem == null) {
@@ -23,11 +33,24 @@ public class OmeroFileSystemStore extends FileSystemStore {
         }
     }
 
+    /**
+     * Constructor.
+     *
+     * @param rootPath Path to the zarr root
+     */
     public OmeroFileSystemStore(Path rootPath) {
         super(rootPath);
         omeroInternalRoot = rootPath;
     }
     
+    /**
+     * Gets an input stream for the file contents if it exists and is readable,
+     * otherwise returns <code>null</code>.
+     *
+     * @param key The key (relative to the root) of the file to read
+     * @return {@link InputStream} for the file contents if successful,
+     *     <code>null</code> otherwise
+     */
     @Override
     public InputStream getInputStream(String key) throws IOException {
         final Path path = omeroInternalRoot.resolve(key);
