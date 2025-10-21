@@ -19,13 +19,10 @@
 package com.bc.zarr.storage;
 
 import com.amazonaws.services.s3.model.AmazonS3Exception;
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.FileSystem;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 
 /**
  * Overridden FileSystemStore. Implemented to catch exceptions
@@ -33,8 +30,6 @@ import java.nio.file.Paths;
  * causing errors.
  */
 public class OmeroFileSystemStore extends FileSystemStore {
-
-    private Path omeroInternalRoot; // Field in FileSystemStore is private
     
     /**
      * Constructor.
@@ -44,11 +39,6 @@ public class OmeroFileSystemStore extends FileSystemStore {
      */
     public OmeroFileSystemStore(String path, FileSystem fileSystem) {
         super(path, fileSystem);
-        if (fileSystem == null) {
-            omeroInternalRoot = Paths.get(path);
-        } else {
-            omeroInternalRoot = fileSystem.getPath(path);
-        }
     }
 
     /**
@@ -58,12 +48,16 @@ public class OmeroFileSystemStore extends FileSystemStore {
      */
     public OmeroFileSystemStore(Path rootPath) {
         super(rootPath);
-        omeroInternalRoot = rootPath;
     }
     
     /**
      * Gets an input stream for the file contents if it exists and is readable,
-     * otherwise returns <code>null</code>.
+     * otherwise returns <code>null</code>. Because <code>checkAccess</code> is
+     * implemented as a No-Op in {@link OmeroS3FilesystemProvider}, we will
+     * always attempt to read files in S3. This results in an AmazonS3Exception
+     * with a status code of 404 for missing chunks. Rather than allow this
+     * exception to propagate, we catch it here and treat it as if the file
+     * was not readable.
      *
      * @param key The key (relative to the root) of the file to read
      * @return {@link InputStream} for the file contents if successful,
@@ -71,19 +65,14 @@ public class OmeroFileSystemStore extends FileSystemStore {
      */
     @Override
     public InputStream getInputStream(String key) throws IOException {
-        final Path path = omeroInternalRoot.resolve(key);
-        if (Files.isReadable(path)) {
-            try {
-                byte[] bytes = Files.readAllBytes(path);
-                return new ByteArrayInputStream(bytes);
-            } catch (AmazonS3Exception e) {
-                if (e.getStatusCode() != 404) {
-                    throw e;
-                }
-                return null;
+        try {
+            return super.getInputStream(key);
+        } catch (AmazonS3Exception e) {
+            if (e.getStatusCode() != 404) {
+                throw e;
             }
+            return null;
         }
-        return null;
     }
 
 }
