@@ -18,18 +18,18 @@ class ZArrayv3 implements ZArray {
 
     @Override
     public int[] getShape() {
-        int[] shape = new int[this.array.metadata.shape.length];
-        for (int i = 0; i < this.array.metadata.shape.length; i++) {
-            shape[i] = (int) this.array.metadata.shape[i];
+        int[] shape = new int[this.array.metadata().shape.length];
+        for (int i = 0; i < this.array.metadata().shape.length; i++) {
+            shape[i] = (int) this.array.metadata().shape[i];
         }
         return shape;
     }
 
     @Override
     public int[] getChunks() {
-        int[] chunks = new int[this.array.metadata.chunkShape().length];
-        for (int i = 0; i < this.array.metadata.chunkShape().length; i++) {
-            chunks[i] = (int) this.array.metadata.chunkShape()[i];
+        int[] chunks = new int[this.array.metadata().chunkShape().length];
+        for (int i = 0; i < this.array.metadata().chunkShape().length; i++) {
+            chunks[i] = (int) this.array.metadata().chunkShape()[i];
         }
         return chunks;
     }
@@ -64,7 +64,7 @@ class ZArrayv3 implements ZArray {
 
     @Override
     public int getPixelsType() {
-        DataType dataType = array.metadata.dataType;
+        DataType dataType = array.metadata().dataType();
         switch (dataType) {
             case UINT8:
                 return FormatTools.UINT8;
