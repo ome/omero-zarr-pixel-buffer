@@ -926,11 +926,12 @@ public class ZarrPixelBuffer implements PixelBuffer {
     }
 
     @Override
-    public void setResolutionLevel(int resolutionLevel) {
+    public synchronized void setResolutionLevel(int resolutionLevel) {
         if (resolutionLevel >= resolutionLevels) {
             throw new IllegalArgumentException(
                     "Resolution level out of bounds!");
         }
+        int oldResolutionLevel = this.resolutionLevel;
         // The pixel buffer API reverses the resolution level (0 is smallest)
         this.resolutionLevel = Math.abs(
                 resolutionLevel - (resolutionLevels - 1));
@@ -939,6 +940,13 @@ public class ZarrPixelBuffer implements PixelBuffer {
                     "This Zarr file has no pixel data");
         }
         
+        // If this is the first time setResolutionLevel is called, or if we're
+        // changing resolution levels, we need to update array and zIndexMap,
+        //  otherwise we don't
+        if (zIndexMap != null && this.resolutionLevel == oldResolutionLevel) {
+            return;
+        }
+
         if (zIndexMap == null) {
             zIndexMap = new HashMap<Integer, Integer>();
         } else {
