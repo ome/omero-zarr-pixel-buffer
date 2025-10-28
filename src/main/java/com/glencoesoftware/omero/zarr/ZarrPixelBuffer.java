@@ -926,12 +926,11 @@ public class ZarrPixelBuffer implements PixelBuffer {
     }
 
     @Override
-    public synchronized void setResolutionLevel(int resolutionLevel) {
+    public void setResolutionLevel(int resolutionLevel) {
         if (resolutionLevel >= resolutionLevels) {
             throw new IllegalArgumentException(
                     "Resolution level out of bounds!");
         }
-        int oldResolutionLevel = this.resolutionLevel;
         // The pixel buffer API reverses the resolution level (0 is smallest)
         this.resolutionLevel = Math.abs(
                 resolutionLevel - (resolutionLevels - 1));
@@ -939,19 +938,8 @@ public class ZarrPixelBuffer implements PixelBuffer {
             throw new IllegalArgumentException(
                     "This Zarr file has no pixel data");
         }
-        
-        // If this is the first time setResolutionLevel is called, or if we're
-        // changing resolution levels, we need to update array and zIndexMap,
-        //  otherwise we don't
-        if (zIndexMap != null && this.resolutionLevel == oldResolutionLevel) {
-            return;
-        }
 
-        if (zIndexMap == null) {
-            zIndexMap = new HashMap<Integer, Integer>();
-        } else {
-            zIndexMap.clear();
-        }
+        Map<Integer, Integer> tmpMap = new HashMap<>();
         try {
             array = zarrArrayCache.get(
                     root.resolve(Integer.toString(this.resolutionLevel))).get();
@@ -966,8 +954,9 @@ public class ZarrPixelBuffer implements PixelBuffer {
                 int fullResZ = fullResolutionArray.getShape()[axesOrder.get(Axis.Z)];
                 int arrayZ = array.getShape()[axesOrder.get(Axis.Z)];
                 for (int z = 0; z < fullResZ; z++) {
-                    zIndexMap.put(z, Math.round(z * arrayZ / fullResZ));
+                    tmpMap.put(z, Math.round(z * arrayZ / fullResZ));
                 }
+                zIndexMap = Map.copyOf(tmpMap);
             }
         } catch (Exception e) {
             // FIXME: Throw the right exception
