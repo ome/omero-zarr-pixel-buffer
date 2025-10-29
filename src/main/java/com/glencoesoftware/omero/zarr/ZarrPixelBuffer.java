@@ -938,12 +938,8 @@ public class ZarrPixelBuffer implements PixelBuffer {
             throw new IllegalArgumentException(
                     "This Zarr file has no pixel data");
         }
-        
-        if (zIndexMap == null) {
-            zIndexMap = new HashMap<Integer, Integer>();
-        } else {
-            zIndexMap.clear();
-        }
+
+        Map<Integer, Integer> tmpMap = new HashMap<>();
         try {
             array = zarrArrayCache.get(
                     root.resolve(Integer.toString(this.resolutionLevel))).get();
@@ -958,8 +954,9 @@ public class ZarrPixelBuffer implements PixelBuffer {
                 int fullResZ = fullResolutionArray.getShape()[axesOrder.get(Axis.Z)];
                 int arrayZ = array.getShape()[axesOrder.get(Axis.Z)];
                 for (int z = 0; z < fullResZ; z++) {
-                    zIndexMap.put(z, Math.round(z * arrayZ / fullResZ));
+                    tmpMap.put(z, Math.round(z * arrayZ / fullResZ));
                 }
+                zIndexMap = Map.copyOf(tmpMap);
             }
         } catch (Exception e) {
             // FIXME: Throw the right exception
