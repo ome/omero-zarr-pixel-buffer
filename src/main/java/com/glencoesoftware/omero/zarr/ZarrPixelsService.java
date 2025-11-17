@@ -20,6 +20,7 @@ package com.glencoesoftware.omero.zarr;
 
 import com.bc.zarr.ZarrArray;
 import com.bc.zarr.ZarrGroup;
+import com.bc.zarr.storage.OmeroFileSystemStore;
 import com.github.benmanes.caffeine.cache.AsyncLoadingCache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.google.common.base.Splitter;
@@ -118,7 +119,7 @@ public class ZarrPixelsService extends ome.io.nio.PixelsService {
         // FIXME: Really should be ZarrUtils.readAttributes() to allow for
         // attribute retrieval from either a ZarrArray or ZarrGroup but ZarrPath
         // is package private at the moment.
-        return ZarrGroup.open(path).getAttributes();
+        return ZarrGroup.open(new OmeroFileSystemStore(path)).getAttributes();
     }
 
     /**
@@ -128,7 +129,7 @@ public class ZarrPixelsService extends ome.io.nio.PixelsService {
      * @return See above.
      */
     public static ZarrArray getZarrArray(Path path) throws IOException {
-        return ZarrArray.open(path);
+        return ZarrArray.open(new OmeroFileSystemStore(path));
     }
 
     /**
