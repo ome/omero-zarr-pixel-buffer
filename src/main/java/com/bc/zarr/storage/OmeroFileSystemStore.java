@@ -18,11 +18,11 @@
 
 package com.bc.zarr.storage;
 
-import com.amazonaws.services.s3.model.AmazonS3Exception;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.FileSystem;
 import java.nio.file.Path;
+import software.amazon.awssdk.services.s3.model.S3Exception;
 
 /**
  * Overridden FileSystemStore. Implemented to catch exceptions
@@ -67,8 +67,8 @@ public class OmeroFileSystemStore extends FileSystemStore {
     public InputStream getInputStream(String key) throws IOException {
         try {
             return super.getInputStream(key);
-        } catch (AmazonS3Exception e) {
-            if (e.getStatusCode() != 404) {
+        } catch (S3Exception e) {
+            if (e.awsErrorDetails().sdkHttpResponse().statusCode() != 404) {
                 throw e;
             }
             return null;

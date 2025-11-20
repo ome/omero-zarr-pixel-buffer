@@ -24,7 +24,6 @@ import com.bc.zarr.storage.OmeroFileSystemStore;
 import com.github.benmanes.caffeine.cache.AsyncLoadingCache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.google.common.base.Splitter;
-import com.upplication.s3fs.OmeroS3FilesystemProvider;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
@@ -46,21 +45,20 @@ import ome.model.core.Image;
 import ome.model.core.Pixels;
 import ome.model.meta.ExternalInfo;
 import ome.model.roi.Mask;
+import org.carlspring.cloud.storage.s3fs.OmeroS3FilesystemProvider;
 import org.perf4j.StopWatch;
 import org.perf4j.slf4j.Slf4JStopWatch;
 import org.slf4j.LoggerFactory;
 
 /**
- * Subclass which overrides series retrieval to avoid the need for
- * an injected {@link IQuery}.
+ * Subclass which overrides series retrieval to avoid the need for an injected {@link IQuery}.
  *
  * @author Chris Allan
  *
  */
 public class ZarrPixelsService extends ome.io.nio.PixelsService {
 
-    private static final org.slf4j.Logger log =
-            LoggerFactory.getLogger(ZarrPixelsService.class);
+    private static final org.slf4j.Logger log = LoggerFactory.getLogger(ZarrPixelsService.class);
 
     public static final String NGFF_ENTITY_TYPE = "com.glencoesoftware.ngff:multiscales";
     public static final long NGFF_ENTITY_ID = 3;
@@ -78,34 +76,26 @@ public class ZarrPixelsService extends ome.io.nio.PixelsService {
     private final IQuery iQuery;
 
     /** Root path vs. metadata cache. */
-    private final
-        AsyncLoadingCache<Path, Map<String, Object>> zarrMetadataCache;
+    private final AsyncLoadingCache<Path, Map<String, Object>> zarrMetadataCache;
 
     /** Array path vs. ZarrArray cache */
     private final AsyncLoadingCache<Path, ZarrArray> zarrArrayCache;
 
     /** Default constructor. */
-    public ZarrPixelsService(
-            String path, boolean isReadOnlyRepo, File memoizerDirectory,
-            long memoizerWait, FilePathResolver resolver, BackOff backOff,
-            TileSizes sizes, IQuery iQuery,
-            long zarrCacheSize,
-            int maxPlaneWidth, int maxPlaneHeight) {
-        super(
-            path, isReadOnlyRepo, memoizerDirectory, memoizerWait, resolver,
-            backOff, sizes, iQuery
-        );
+    public ZarrPixelsService(String path, boolean isReadOnlyRepo, File memoizerDirectory,
+        long memoizerWait, FilePathResolver resolver, BackOff backOff, TileSizes sizes,
+        IQuery iQuery, long zarrCacheSize, int maxPlaneWidth, int maxPlaneHeight) {
+        super(path, isReadOnlyRepo, memoizerDirectory, memoizerWait, resolver, backOff, sizes,
+            iQuery);
         this.zarrCacheSize = zarrCacheSize;
         log.info("Zarr metadata and array cache size: {}", zarrCacheSize);
         this.maxPlaneWidth = maxPlaneWidth;
         this.maxPlaneHeight = maxPlaneHeight;
         this.iQuery = iQuery;
-        zarrMetadataCache = Caffeine.newBuilder()
-                .maximumSize(this.zarrCacheSize)
-                .buildAsync(ZarrPixelsService::getZarrMetadata);
-        zarrArrayCache = Caffeine.newBuilder()
-                .maximumSize(this.zarrCacheSize)
-                .buildAsync(ZarrPixelsService::getZarrArray);
+        zarrMetadataCache = Caffeine.newBuilder().maximumSize(this.zarrCacheSize)
+            .buildAsync(ZarrPixelsService::getZarrMetadata);
+        zarrArrayCache = Caffeine.newBuilder().maximumSize(this.zarrCacheSize)
+            .buildAsync(ZarrPixelsService::getZarrArray);
     }
 
     /**
@@ -114,8 +104,7 @@ public class ZarrPixelsService extends ome.io.nio.PixelsService {
      * @param path path to get Zarr metadata from
      * @return See above.
      */
-    public static Map<String, Object> getZarrMetadata(Path path)
-            throws IOException {
+    public static Map<String, Object> getZarrMetadata(Path path) throws IOException {
         // FIXME: Really should be ZarrUtils.readAttributes() to allow for
         // attribute retrieval from either a ZarrArray or ZarrGroup but ZarrPath
         // is package private at the moment.
@@ -133,12 +122,11 @@ public class ZarrPixelsService extends ome.io.nio.PixelsService {
     }
 
     /**
-     * Converts an NGFF root string to a path, initializing a {@link FileSystem}
-     * if required.
+     * Converts an NGFF root string to a path, initializing a {@link FileSystem} if required.
      *
      * @param ngffDir NGFF directory root
-     * @return Fully initialized path or <code>null</code> if the NGFF root
-     *     directory has not been specified in configuration.
+     * @return Fully initialized path or <code>null</code> if the NGFF root directory has not been
+     *         specified in configuration.
      */
     public static Path asPath(String ngffDir) throws IOException {
         if (ngffDir.isEmpty()) {
@@ -149,33 +137,27 @@ public class ZarrPixelsService extends ome.io.nio.PixelsService {
             URI uri = new URI(ngffDir);
             if ("s3".equals(uri.getScheme())) {
                 if (uri.getUserInfo() != null && !uri.getUserInfo().isEmpty()) {
-                    throw new RuntimeException(
-                        "Found unsupported user information in S3 URI."
+                    throw new RuntimeException("Found unsupported user information in S3 URI."
                         + " If you are trying to pass S3 credentials, "
                         + "use either named profiles or instance credentials.");
                 }
                 String query = Optional.ofNullable(uri.getQuery()).orElse("");
-                Map<String, String> params = Splitter.on('&')
-                        .trimResults()
-                        .omitEmptyStrings()
-                        .withKeyValueSeparator('=')
-                        .split(query);
+                Map<String, String> params = Splitter.on('&').trimResults().omitEmptyStrings()
+                    .withKeyValueSeparator('=').split(query);
                 // drop initial "/"
                 String uriPath = uri.getPath().substring(1);
                 int first = uriPath.indexOf("/");
                 String bucket = "/" + uriPath.substring(0, first);
                 String rest = uriPath.substring(first + 1);
                 // FIXME: We might want to support additional S3FS settings in
-                // the future.  See:
-                //   * https://github.com/lasersonlab/Amazon-S3-FileSystem-NIO2
+                // the future. See:
+                // * https://github.com/lasersonlab/Amazon-S3-FileSystem-NIO2
                 Map<String, String> env = new HashMap<String, String>();
                 String profile = params.get("profile");
                 if (profile != null) {
                     env.put("s3fs_credential_profile_name", profile);
                 }
-                String anonymous =
-                        Optional.ofNullable(params.get("anonymous"))
-                                .orElse("false");
+                String anonymous = Optional.ofNullable(params.get("anonymous")).orElse("false");
                 env.put("s3fs_anonymous", anonymous);
                 OmeroS3FilesystemProvider fsp = new OmeroS3FilesystemProvider();
                 FileSystem fs = fsp.newFileSystem(uri, env);
@@ -191,10 +173,10 @@ public class ZarrPixelsService extends ome.io.nio.PixelsService {
      * Retrieve {@link Mask} or {@link Image} URI stored under {@link ExternalInfo}.
      *
      * @param object loaded {@link Mask} or {@link Image} to check for a URI
-     * @return the value of {@link ExternalInfo.lsid}, <code>null</code> if the object
-     *     does not have an {@link ExternalInfo} with a valid {@link ExternalInfo.lsid} atttribute
-     *     or if {@link ExternalInfo.entityType} is not equal to {@link NGFF_ENTITY_TYPE} or if
-     *     {@link ExternalInfo.entityId} is not equal to {@link NGFF_ENTITY_ID}.
+     * @return the value of {@link ExternalInfo.lsid}, <code>null</code> if the object does not have
+     *         an {@link ExternalInfo} with a valid {@link ExternalInfo.lsid} atttribute or if
+     *         {@link ExternalInfo.entityType} is not equal to {@link NGFF_ENTITY_TYPE} or if
+     *         {@link ExternalInfo.entityId} is not equal to {@link NGFF_ENTITY_ID}.
      */
     public String getUri(IObject object) {
         return getUri(object, NGFF_ENTITY_TYPE, NGFF_ENTITY_ID);
@@ -203,64 +185,57 @@ public class ZarrPixelsService extends ome.io.nio.PixelsService {
     /**
      * Retrieve {@link Mask} or {@link Image} URI stored under {@link ExternalInfo}.
      *
-     * @param object loaded {@link Mask} or {@link Image} to check for a URI
+     * @param object           loaded {@link Mask} or {@link Image} to check for a URI
      * @param targetEntityType expected entityType in the object {@link ExternalInfo}
-     * @param targetEntityId expected entityType in the object {@link ExternalInfo}
-     * @return the value of {@link ExternalInfo.lsid}, <code>null</code> if the object
-     *     does not have an {@link ExternalInfo} with a valid {@link ExternalInfo.lsid} atttribute
-     *     or if {@link ExternalInfo.entityType} is not equal to <code>targetEntityType</code> or if
-     *     {@link ExternalInfo.entityId} is not equal to <code>targetEntityId</code> .
+     * @param targetEntityId   expected entityType in the object {@link ExternalInfo}
+     * @return the value of {@link ExternalInfo.lsid}, <code>null</code> if the object does not have
+     *         an {@link ExternalInfo} with a valid {@link ExternalInfo.lsid} atttribute or if
+     *         {@link ExternalInfo.entityType} is not equal to <code>targetEntityType</code> or if
+     *         {@link ExternalInfo.entityId} is not equal to <code>targetEntityId</code> .
      */
     public String getUri(IObject object, String targetEntityType, Long targetEntityId) {
         ExternalInfo externalInfo = object.getDetails().getExternalInfo();
         if (externalInfo == null) {
-            log.debug(
-                "{}:{} missing ExternalInfo",
-                object.getClass().getSimpleName(), object.getId());
+            log.debug("{}:{} missing ExternalInfo", object.getClass().getSimpleName(),
+                object.getId());
             return null;
         }
 
         String entityType = externalInfo.getEntityType();
         if (entityType == null) {
-            log.debug(
-                "{}:{} missing ExternalInfo entityType",
-                object.getClass().getSimpleName(), object.getId());
+            log.debug("{}:{} missing ExternalInfo entityType", object.getClass().getSimpleName(),
+                object.getId());
             return null;
         }
         if (!entityType.equals(targetEntityType)) {
-            log.debug(
-                "{}:{} unsupported ExternalInfo entityType {}",
+            log.debug("{}:{} unsupported ExternalInfo entityType {}",
                 object.getClass().getSimpleName(), object.getId(), entityType);
             return null;
         }
 
         Long entityId = externalInfo.getEntityId();
         if (entityType == null) {
-            log.debug(
-                "{}:{} missing ExternalInfo entityId",
-                object.getClass().getSimpleName(), object.getId());
+            log.debug("{}:{} missing ExternalInfo entityId", object.getClass().getSimpleName(),
+                object.getId());
             return null;
         }
         if (!entityId.equals(targetEntityId)) {
-            log.debug(
-                "{}:{} unsupported ExternalInfo entityId {}",
+            log.debug("{}:{} unsupported ExternalInfo entityId {}",
                 object.getClass().getSimpleName(), object.getId(), entityId);
             return null;
         }
 
         String uri = externalInfo.getLsid();
         if (uri == null) {
-            log.debug(
-                "{}:{} missing LSID",
-                object.getClass().getSimpleName(), object.getId());
+            log.debug("{}:{} missing LSID", object.getClass().getSimpleName(), object.getId());
             return null;
         }
         return uri;
     }
 
     /**
-     * Retrieve the {@link Image} for a particular set of pixels.  Where
-     * possible, does not initiate a query.
+     * Retrieve the {@link Image} for a particular set of pixels. Where possible, does not initiate
+     * a query.
      *
      * @param pixels Pixels set to retrieve the {@link Image} for.
      * @return See above.
@@ -274,12 +249,11 @@ public class ZarrPixelsService extends ome.io.nio.PixelsService {
     }
 
     /**
-     * Retrieves the series for a given set of pixels.  Where possible, does not
-     * initiate a query.
+     * Retrieves the series for a given set of pixels. Where possible, does not initiate a query.
      *
      * @param pixels Set of pixels to return the series for.
-     * @return The series as specified by the pixels parameters or
-     *     <code>0</code> (the first series).
+     * @return The series as specified by the pixels parameters or <code>0</code> (the first
+     *         series).
      */
     @Override
     protected int getSeries(Pixels pixels) {
@@ -296,8 +270,7 @@ public class ZarrPixelsService extends ome.io.nio.PixelsService {
      * @param mask Mask to retrieve a pixel buffer for.
      * @return A pixel buffer instance.
      */
-    public ZarrPixelBuffer getLabelImagePixelBuffer(Mask mask)
-            throws IOException {
+    public ZarrPixelBuffer getLabelImagePixelBuffer(Mask mask) throws IOException {
         Pixels pixels = new ome.model.core.Pixels();
         pixels.setSizeX(mask.getWidth().intValue());
         pixels.setSizeY(mask.getHeight().intValue());
@@ -306,22 +279,18 @@ public class ZarrPixelsService extends ome.io.nio.PixelsService {
         pixels.setSizeZ(1);
         String root = getUri(mask);
         if (root == null) {
-            throw new IllegalArgumentException(
-                    "No root for Mask:" + mask.getId());
+            throw new IllegalArgumentException("No root for Mask:" + mask.getId());
         }
-        return new ZarrPixelBuffer(
-                pixels, asPath(root), maxPlaneWidth, maxPlaneHeight,
-                zarrMetadataCache, zarrArrayCache);
+        return new ZarrPixelBuffer(pixels, asPath(root), maxPlaneWidth, maxPlaneHeight,
+            zarrMetadataCache, zarrArrayCache);
     }
 
     /**
      * Creates an NGFF pixel buffer for a given set of pixels.
      *
-     * @param pixels Pixels set to retrieve a pixel buffer for.
-     *     <code>true</code> opens as read-write, <code>false</code> opens as
-     *     read-only.
-     * @return An NGFF pixel buffer instance or <code>null</code> if one cannot
-     *     be found.
+     * @param pixels Pixels set to retrieve a pixel buffer for. <code>true</code> opens as
+     *               read-write, <code>false</code> opens as read-only.
+     * @return An NGFF pixel buffer instance or <code>null</code> if one cannot be found.
      */
     protected ZarrPixelBuffer createOmeNgffPixelBuffer(Pixels pixels) {
         StopWatch t0 = new Slf4JStopWatch("createOmeNgffPixelBuffer()");
@@ -339,20 +308,16 @@ public class ZarrPixelsService extends ome.io.nio.PixelsService {
             Path root = asPath(uri);
             log.info("OME-NGFF root is: " + uri);
             try {
-                ZarrPixelBuffer v = new ZarrPixelBuffer(
-                    pixels, root, maxPlaneWidth, maxPlaneHeight,
+                ZarrPixelBuffer v = new ZarrPixelBuffer(pixels, root, maxPlaneWidth, maxPlaneHeight,
                     zarrMetadataCache, zarrArrayCache);
                 log.info("Using OME-NGFF pixel buffer");
                 return v;
             } catch (Exception e) {
-                log.warn(
-                    "Getting OME-NGFF pixel buffer failed - "
-                    + "attempting to get local data", e);
+                log.warn("Getting OME-NGFF pixel buffer failed - " + "attempting to get local data",
+                    e);
             }
         } catch (IOException e1) {
-            log.debug(
-                "Failed to find OME-NGFF metadata for Pixels:{}",
-                pixels.getId());
+            log.debug("Failed to find OME-NGFF metadata for Pixels:{}", pixels.getId());
         } finally {
             t0.stop();
         }
@@ -360,14 +325,12 @@ public class ZarrPixelsService extends ome.io.nio.PixelsService {
     }
 
     /**
-     * Returns a pixel buffer for a given set of pixels. Either an NGFF pixel
-     * buffer, a proprietary ROMIO pixel buffer or a specific pixel buffer
-     * implementation.
+     * Returns a pixel buffer for a given set of pixels. Either an NGFF pixel buffer, a proprietary
+     * ROMIO pixel buffer or a specific pixel buffer implementation.
      *
      * @param pixels Pixels set to retrieve a pixel buffer for.
-     * @param write Whether or not to open the pixel buffer as read-write.
-     *     <code>true</code> opens as read-write, <code>false</code> opens as
-     *     read-only.
+     * @param write  Whether or not to open the pixel buffer as read-write. <code>true</code> opens
+     *               as read-write, <code>false</code> opens as read-only.
      * @return A pixel buffer instance.
      */
     @Override
@@ -380,4 +343,3 @@ public class ZarrPixelsService extends ome.io.nio.PixelsService {
     }
 
 }
-

@@ -18,17 +18,17 @@
 
 package com.glencoesoftware.omero.zarr;
 
-import com.amazonaws.services.s3.AmazonS3;
-import com.upplication.s3fs.S3FileSystem;
-import com.upplication.s3fs.S3FileSystemProvider;
 import java.io.IOException;
+import org.carlspring.cloud.storage.s3fs.S3FileSystem;
+import org.carlspring.cloud.storage.s3fs.S3FileSystemProvider;
+import software.amazon.awssdk.services.s3.S3Client;
 
 /** Subclass of S3FileSystem with performance optimizations. */
 public class OmeroS3FileSystem extends S3FileSystem {
 
     /** Default constructor. */
-    public OmeroS3FileSystem(S3FileSystemProvider provider, String key,
-            AmazonS3 client, String endpoint) {
+    public OmeroS3FileSystem(S3FileSystemProvider provider, String key, S3Client client,
+        String endpoint) {
         super(provider, key, client, endpoint);
     }
 
