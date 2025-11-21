@@ -18,22 +18,13 @@
 
 package com.glencoesoftware.omero.zarr;
 
-import com.bc.zarr.ZarrArray;
-import com.bc.zarr.ZarrGroup;
-import com.bc.zarr.storage.OmeroFileSystemStore;
 import com.github.benmanes.caffeine.cache.AsyncLoadingCache;
 import com.github.benmanes.caffeine.cache.Caffeine;
-import com.google.common.base.Splitter;
+import dev.zarr.zarrjava.core.Array;
 import java.io.File;
 import java.io.IOException;
-import java.net.URI;
 import java.net.URISyntaxException;
-import java.nio.file.FileSystem;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
 import ome.api.IQuery;
 import ome.conditions.LockTimeout;
 import ome.io.nio.BackOff;
@@ -45,7 +36,6 @@ import ome.model.core.Image;
 import ome.model.core.Pixels;
 import ome.model.meta.ExternalInfo;
 import ome.model.roi.Mask;
-import org.carlspring.cloud.storage.s3fs.OmeroS3FilesystemProvider;
 import org.perf4j.StopWatch;
 import org.perf4j.slf4j.Slf4JStopWatch;
 import org.slf4j.LoggerFactory;
@@ -76,15 +66,21 @@ public class ZarrPixelsService extends ome.io.nio.PixelsService {
     private final IQuery iQuery;
 
     /** Root path vs. metadata cache. */
-    private final AsyncLoadingCache<Path, Map<String, Object>> zarrMetadataCache;
+    private final AsyncLoadingCache<ZarrPath, Map<String, Object>> zarrMetadataCache;
 
     /** Array path vs. ZarrArray cache */
-    private final AsyncLoadingCache<Path, ZarrArray> zarrArrayCache;
+    private final AsyncLoadingCache<ZarrPath, Array> zarrArrayCache;
 
-    /** Default constructor. */
+    /**
+     * Default constructor.
+     *
+     * @throws URISyntaxException       If something isn't right.
+     * @throws IllegalArgumentException If something isn't right.
+     */
     public ZarrPixelsService(String path, boolean isReadOnlyRepo, File memoizerDirectory,
         long memoizerWait, FilePathResolver resolver, BackOff backOff, TileSizes sizes,
-        IQuery iQuery, long zarrCacheSize, int maxPlaneWidth, int maxPlaneHeight) {
+        IQuery iQuery, long zarrCacheSize, int maxPlaneWidth, int maxPlaneHeight)
+        throws IllegalArgumentException, URISyntaxException {
         super(path, isReadOnlyRepo, memoizerDirectory, memoizerWait, resolver, backOff, sizes,
             iQuery);
         this.zarrCacheSize = zarrCacheSize;
@@ -103,12 +99,12 @@ public class ZarrPixelsService extends ome.io.nio.PixelsService {
      *
      * @param path path to get Zarr metadata from
      * @return See above.
+     * @throws URISyntaxException       If something isn't right.
+     * @throws IllegalArgumentException If something isn't right.
      */
-    public static Map<String, Object> getZarrMetadata(Path path) throws IOException {
-        // FIXME: Really should be ZarrUtils.readAttributes() to allow for
-        // attribute retrieval from either a ZarrArray or ZarrGroup but ZarrPath
-        // is package private at the moment.
-        return ZarrGroup.open(new OmeroFileSystemStore(path)).getAttributes();
+    public static Map<String, Object> getZarrMetadata(ZarrPath zp)
+        throws IOException, IllegalArgumentException, URISyntaxException {
+        return zp.store.metadata(zp.path);
     }
 
     /**
@@ -116,57 +112,12 @@ public class ZarrPixelsService extends ome.io.nio.PixelsService {
      *
      * @param path path to open a Zarr array from
      * @return See above.
+     * @throws URISyntaxException       If something isn't right.
+     * @throws IllegalArgumentException If something isn't right.
      */
-    public static ZarrArray getZarrArray(Path path) throws IOException {
-        return ZarrArray.open(new OmeroFileSystemStore(path));
-    }
-
-    /**
-     * Converts an NGFF root string to a path, initializing a {@link FileSystem} if required.
-     *
-     * @param ngffDir NGFF directory root
-     * @return Fully initialized path or <code>null</code> if the NGFF root directory has not been
-     *         specified in configuration.
-     */
-    public static Path asPath(String ngffDir) throws IOException {
-        if (ngffDir.isEmpty()) {
-            return null;
-        }
-
-        try {
-            URI uri = new URI(ngffDir);
-            if ("s3".equals(uri.getScheme())) {
-                if (uri.getUserInfo() != null && !uri.getUserInfo().isEmpty()) {
-                    throw new RuntimeException("Found unsupported user information in S3 URI."
-                        + " If you are trying to pass S3 credentials, "
-                        + "use either named profiles or instance credentials.");
-                }
-                String query = Optional.ofNullable(uri.getQuery()).orElse("");
-                Map<String, String> params = Splitter.on('&').trimResults().omitEmptyStrings()
-                    .withKeyValueSeparator('=').split(query);
-                // drop initial "/"
-                String uriPath = uri.getPath().substring(1);
-                int first = uriPath.indexOf("/");
-                String bucket = "/" + uriPath.substring(0, first);
-                String rest = uriPath.substring(first + 1);
-                // FIXME: We might want to support additional S3FS settings in
-                // the future. See:
-                // * https://github.com/lasersonlab/Amazon-S3-FileSystem-NIO2
-                Map<String, String> env = new HashMap<String, String>();
-                String profile = params.get("profile");
-                if (profile != null) {
-                    env.put("s3fs_credential_profile_name", profile);
-                }
-                String anonymous = Optional.ofNullable(params.get("anonymous")).orElse("false");
-                env.put("s3fs_anonymous", anonymous);
-                OmeroS3FilesystemProvider fsp = new OmeroS3FilesystemProvider();
-                FileSystem fs = fsp.newFileSystem(uri, env);
-                return fs.getPath(bucket, rest);
-            }
-        } catch (URISyntaxException e) {
-            // Fall through
-        }
-        return Paths.get(ngffDir);
+    public static Array getZarrArray(ZarrPath zp)
+        throws IOException, IllegalArgumentException, URISyntaxException {
+        return zp.store.getArray(zp.path);
     }
 
     /**
@@ -269,8 +220,11 @@ public class ZarrPixelsService extends ome.io.nio.PixelsService {
      *
      * @param mask Mask to retrieve a pixel buffer for.
      * @return A pixel buffer instance.
+     * @throws URISyntaxException       If something isn't right.
+     * @throws IllegalArgumentException If something isn't right.
      */
-    public ZarrPixelBuffer getLabelImagePixelBuffer(Mask mask) throws IOException {
+    public ZarrPixelBuffer getLabelImagePixelBuffer(Mask mask)
+        throws IOException, IllegalArgumentException, URISyntaxException {
         Pixels pixels = new ome.model.core.Pixels();
         pixels.setSizeX(mask.getWidth().intValue());
         pixels.setSizeY(mask.getHeight().intValue());
@@ -281,8 +235,9 @@ public class ZarrPixelsService extends ome.io.nio.PixelsService {
         if (root == null) {
             throw new IllegalArgumentException("No root for Mask:" + mask.getId());
         }
-        return new ZarrPixelBuffer(pixels, asPath(root), maxPlaneWidth, maxPlaneHeight,
-            zarrMetadataCache, zarrArrayCache);
+        ZarrStore store = new ZarrStore(root);
+        return new ZarrPixelBuffer(pixels, store, maxPlaneWidth, maxPlaneHeight, zarrMetadataCache,
+            zarrArrayCache);
     }
 
     /**
@@ -297,6 +252,7 @@ public class ZarrPixelsService extends ome.io.nio.PixelsService {
         try {
             Image image = getImage(pixels);
             String uri = getUri(image);
+
             if (uri == null) {
                 // Quick exit if we think we're OME-NGFF but there is no URI
                 if (image.getFormat() != null && "OMEXML".equals(image.getFormat().getValue())) {
@@ -305,18 +261,18 @@ public class ZarrPixelsService extends ome.io.nio.PixelsService {
                 log.debug("No OME-NGFF root");
                 return null;
             }
-            Path root = asPath(uri);
+            ZarrStore store = new ZarrStore(uri);
             log.info("OME-NGFF root is: " + uri);
             try {
-                ZarrPixelBuffer v = new ZarrPixelBuffer(pixels, root, maxPlaneWidth, maxPlaneHeight,
-                    zarrMetadataCache, zarrArrayCache);
+                ZarrPixelBuffer v = new ZarrPixelBuffer(pixels, store, maxPlaneWidth,
+                    maxPlaneHeight, zarrMetadataCache, zarrArrayCache);
                 log.info("Using OME-NGFF pixel buffer");
                 return v;
             } catch (Exception e) {
                 log.warn("Getting OME-NGFF pixel buffer failed - " + "attempting to get local data",
                     e);
             }
-        } catch (IOException e1) {
+        } catch (Exception e1) {
             log.debug("Failed to find OME-NGFF metadata for Pixels:{}", pixels.getId());
         } finally {
             t0.stop();

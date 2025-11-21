@@ -35,8 +35,6 @@ repositories {
 dependencies {
     api 'org.openmicroscopy:omero-blitz:5.8.3'
     implementation 'com.github.ben-manes.caffeine:caffeine:3.1.8'
-    implementation 'dev.zarr:jzarr:0.4.2'
-    implementation 'org.carlspring.cloud.aws:s3fs-nio:3.0.0'
     implementation "software.amazon.awssdk:apache-client:2.34.4"
     implementation "software.amazon.awssdk:netty-nio-client:2.34.4"
     implementation 'software.amazon.awssdk:s3:2.34.4'
