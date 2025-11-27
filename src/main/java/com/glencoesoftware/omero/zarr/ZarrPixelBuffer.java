@@ -113,7 +113,8 @@ public class ZarrPixelBuffer implements PixelBuffer {
         try {
             Map<String, Object> tmp = this.zarrMetadataCache.get(new ZarrPath(root, "")).get();
             if (tmp.containsKey("ome")) {
-                rootGroupAttributes = (Map<String, Object>) tmp.get("ome");
+                Object omeAttributes = tmp.get("ome");
+                rootGroupAttributes = Utils.castToStringObjectMap(omeAttributes);
             } else {
                 rootGroupAttributes = tmp;
                 log.warn("Attributes should be under 'ome' key!");
@@ -200,67 +201,17 @@ public class ZarrPixelBuffer implements PixelBuffer {
         // adjust the shape/offset for the Z coordinate only
         // this ensures that the correct Zs are read from the correct offsets
         // since the requested shape/offset may not match the underlying array
-        int planes = 1;
         long originalZIndex = 1;
         if (axesOrder.containsKey(Axis.Z)) {
             originalZIndex = offset[axesOrder.get(Axis.Z)];
             if (getSizeZ() != getTrueSizeZ()) {
                 offset[axesOrder.get(Axis.Z)] = zIndexMap.get(originalZIndex);
-                planes = shape[axesOrder.get(Axis.Z)];
                 shape[axesOrder.get(Axis.Z)] = 1;
             }
         }
         try {
             ByteBuffer asByteBuffer = ByteBuffer.wrap(buffer);
             asByteBuffer.put(array.read(offset, shape).getDataAsByteBuffer());
-            // ucar.ma2.DataType dataType = ((DataType) arrayMetadata.get("dataType"))
-            // .getMA2DataType();
-            // for (int z = 0; z < planes; z++) {
-            // if (axesOrder.containsKey(Axis.Z)) {
-            // offset[axesOrder.get(Axis.Z)] = zIndexMap.get(originalZIndex + z);
-            // }
-            // switch (dataType) {
-            // case BYTE:
-            // case UBYTE:
-            // asByteBuffer.put(array.read(offset, shape).getDataAsByteBuffer());
-            // break;
-            // case SHORT:
-            // case USHORT: {
-            // short[] data = (short[]) array.read(offset, shape).;
-            // asByteBuffer.asShortBuffer().put(data);
-            // break;
-            // }
-            // case INT:
-            // case UINT: {
-            // int[] data = (int[]) array.read(shape, offset);
-            // asByteBuffer.asIntBuffer().put(data);
-            // break;
-            // }
-            // case LONG: {
-            // long[] data = (long[]) array.read(shape, offset);
-            // asByteBuffer.asLongBuffer().put(data);
-            // break;
-            // }
-            // case FLOAT: {
-            // float[] data = (float[]) array.read(shape, offset);
-            // asByteBuffer.asFloatBuffer().put(data);
-            // break;
-            // }
-            // case DOUBLE: {
-            // double[] data = (double[]) array.read(shape, offset);
-            // asByteBuffer.asDoubleBuffer().put(data);
-            // break;
-            // }
-            // default:
-            // throw new IllegalArgumentException(
-            // "Data type " + dataType + " not supported");
-            // }
-            // }
-            // } catch (
-
-            // InvalidRangeException e) {
-            // log.error("Error reading Zarr data", e);
-            // throw new IOException(e);
         } catch (Exception e) {
             log.error("Error reading Zarr data", e);
             throw new IOException(e);
@@ -301,7 +252,10 @@ public class ZarrPixelBuffer implements PixelBuffer {
      * @see #getMultiscalesMetadata()
      */
     public List<Map<String, String>> getDatasets() {
-        return (List<Map<String, String>>) getMultiscalesMetadata().get(0).get("datasets");
+        List<Map<String, Object>> multiscales = getMultiscalesMetadata();
+
+        Object datasets = multiscales.get(0).get("datasets");
+        return Utils.castToListOfStringMap(datasets);
     }
 
     /**
@@ -314,8 +268,12 @@ public class ZarrPixelBuffer implements PixelBuffer {
             return axesOrder;
         }
         axesOrder = new HashMap<Axis, Integer>();
-        List<Map<String, Object>> axesData = (List<Map<String, Object>>) getMultiscalesMetadata()
-            .get(0).get("axes");
+        List<Map<String, Object>> multiscales = getMultiscalesMetadata();
+        if (multiscales.isEmpty()) {
+            throw new IllegalArgumentException("No multiscales metadata found");
+        }
+        Object axes = multiscales.get(0).get("axes");
+        List<Map<String, Object>> axesData = Utils.castToListOfObjectMap(axes);
         if (axesData == null) {
             log.warn("No axes metadata found, defaulting to standard axes TCZYX");
             axesOrder.put(Axis.T, 0);
@@ -349,7 +307,8 @@ public class ZarrPixelBuffer implements PixelBuffer {
      * @see #getDatasets()
      */
     public List<Map<String, Object>> getMultiscalesMetadata() {
-        return (List<Map<String, Object>>) rootGroupAttributes.get("multiscales");
+        Object multiscales = rootGroupAttributes.get("multiscales");
+        return Utils.castToListOfObjectMap(multiscales);
     }
 
     /**
