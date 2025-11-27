@@ -8,27 +8,29 @@ plugins {
 group = 'com.glencoesoftware.omero'
 version = '0.6.2-SNAPSHOT'
 
-sourceCompatibility = 1.11
-targetCompatibility = 1.11
+java {
+    sourceCompatibility = JavaVersion.VERSION_11
+    targetCompatibility = JavaVersion.VERSION_11
+}
 
 repositories {
     mavenLocal()
     mavenCentral()
     maven {
-        name 'Unidata'
-        url 'https://artifacts.unidata.ucar.edu/repository/unidata-releases/'
+        name = 'Unidata'
+        url = 'https://artifacts.unidata.ucar.edu/repository/unidata-releases/'
     }
     maven {
-        url 'https://artifacts.glencoesoftware.com/artifactory/ome.releases'
+        url = 'https://artifacts.glencoesoftware.com/artifactory/ome.releases'
     }
     maven {
-        url 'https://artifacts.glencoesoftware.com/artifactory/ome.external'
+        url = 'https://artifacts.glencoesoftware.com/artifactory/ome.external'
     }
     maven {
-        url 'https://artifacts.glencoesoftware.com/artifactory/scijava-thirdparty'
+        url = 'https://artifacts.glencoesoftware.com/artifactory/scijava-thirdparty'
     }
     maven {
-        url 'https://repo.glencoesoftware.com/repository/bioformats2raw2ometiff/'
+        url = 'https://repo.glencoesoftware.com/repository/bioformats2raw2ometiff/'
     }
 }
 
@@ -45,8 +47,8 @@ dependencies {
     implementation 'com.univocity:univocity-parsers:2.8.4'
     implementation 'dev.zarr:zarr-java:0.0.5'
     implementation 'javax.xml.bind:jaxb-api:2.3.0'
-    implementation group: 'ch.qos.logback', name: 'logback-classic', version: '1.3.14'
-    implementation group: 'ch.qos.logback', name: 'logback-core', version: '1.3.14'
+    implementation 'ch.qos.logback:logback-classic:1.3.14'
+    implementation 'ch.qos.logback:logback-core:1.3.14'
     implementation 'org.apache.maven:maven-artifact:3.9.4'
 
     implementation 'com.fasterxml.jackson.core:jackson-core:2.20.0'
@@ -80,7 +82,7 @@ publishing {
 
     repositories {
         maven {
-            url 'https://artifacts.glencoesoftware.com/artifactory/gs-omero-snapshots-local/'
+            url = 'https://artifacts.glencoesoftware.com/artifactory/gs-omero-snapshots-local/'
             credentials {
                username = project.properties.ArtifactoryUserName
                password = project.properties.ArtifactoryPassword
@@ -109,5 +111,7 @@ checkstyle {
 }
 
 tasks.withType(JavaCompile) {
+    // get rid of the "-Xlint:deprecation for details" message
+    options.compilerArgs << '-Xlint:unchecked'
     options.deprecation = true
 }
