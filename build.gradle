@@ -3,10 +3,18 @@ plugins {
     id 'eclipse'
     id 'maven-publish'
     id 'checkstyle'
+    id 'com.autonomousapps.dependency-analysis' version '3.5.1'
 }
 
 group = 'com.glencoesoftware.omero'
 version = '0.6.2-SNAPSHOT'
+
+ext {
+    awsSdkVersion = '2.34.6'
+    jacksonVersion = '2.20.0'
+    zarrJavaVersion = '0.0.5'
+    formatsVersion = '8.3.0'
+}
 
 java {
     sourceCompatibility = JavaVersion.VERSION_11
@@ -35,29 +43,33 @@ repositories {
 }
 
 dependencies {
-    api 'org.openmicroscopy:omero-blitz:5.8.3'
-    implementation 'com.github.ben-manes.caffeine:caffeine:3.1.8'
-    implementation "software.amazon.awssdk:apache-client:2.34.4"
-    implementation "software.amazon.awssdk:netty-nio-client:2.34.4"
-    implementation 'software.amazon.awssdk:s3:2.34.4'
-    implementation 'org.apache.tika:tika-core:1.28.5'
+    api 'org.openmicroscopy:omero-common:5.7.3'
+    api 'org.openmicroscopy:omero-model:5.7.3'
+    api 'org.openmicroscopy:omero-romio:5.8.3'
+    api 'com.github.ben-manes.caffeine:caffeine:3.1.8'
+    api "dev.zarr:zarr-java:${zarrJavaVersion}"
 
-    implementation 'net.java.dev.jna:jna:5.10.0'
-    implementation 'ome:formats-gpl:7.3.1'
-    implementation 'com.univocity:univocity-parsers:2.8.4'
-    implementation 'dev.zarr:zarr-java:0.0.5'
-    implementation 'javax.xml.bind:jaxb-api:2.3.0'
-    implementation 'ch.qos.logback:logback-classic:1.3.14'
-    implementation 'ch.qos.logback:logback-core:1.3.14'
-    implementation 'org.apache.maven:maven-artifact:3.9.4'
+    runtimeOnly "software.amazon.awssdk:apache-client:${awsSdkVersion}"
+    runtimeOnly "software.amazon.awssdk:netty-nio-client:${awsSdkVersion}"
+    runtimeOnly "com.fasterxml.jackson.core:jackson-core:${jacksonVersion}"
+    runtimeOnly "com.fasterxml.jackson.core:jackson-databind:${jacksonVersion}"
+    runtimeOnly "ome:formats-api:${formatsVersion}"
+    runtimeOnly "ome:formats-gpl:${formatsVersion}"
+    runtimeOnly 'org.apache.tika:tika-core:1.28.5'
+    runtimeOnly 'ch.qos.logback:logback-classic:1.3.14'
 
-    implementation 'com.fasterxml.jackson.core:jackson-core:2.20.0'
-    implementation 'com.fasterxml.jackson.core:jackson-databind:2.20.0'
+    implementation "software.amazon.awssdk:s3:${awsSdkVersion}"
+    implementation "software.amazon.awssdk:auth:${awsSdkVersion}"
+    implementation "software.amazon.awssdk:aws-core:${awsSdkVersion}"
+    implementation "software.amazon.awssdk:regions:${awsSdkVersion}"
+    implementation "software.amazon.awssdk:sdk-core:${awsSdkVersion}"
+    implementation 'edu.ucar:cdm-core:5.9.1'
+    implementation 'org.perf4j:perf4j:0.9.16'
+    implementation 'org.slf4j:slf4j-api:2.0.9'
 
+    testImplementation 'org.openmicroscopy:omero-blitz:5.8.3'
     testImplementation 'junit:junit:4.13.2'
     testImplementation 'org.apache.commons:commons-compress:1.26.0'
-    testImplementation 'info.picocli:picocli:4.7.5'
-    testImplementation 'com.glencoesoftware:bioformats2raw:0.11.0-SNAPSHOT'
 }
 
 test {
@@ -110,8 +122,26 @@ checkstyle {
     toolVersion = "10.26.1"
 }
 
+dependencyAnalysis {
+  issues {
+    all {
+      onAny {
+        severity("fail")
+      }
+    }
+  }
+  reporting {
+    printBuildHealth(true)
+  }
+}
+
 tasks.withType(JavaCompile) {
     // get rid of the "-Xlint:deprecation for details" message
     options.compilerArgs << '-Xlint:unchecked'
     options.deprecation = true
+}
+
+tasks.register('copyRuntimeDeps', Copy) {
+    from configurations.runtimeClasspath
+    into layout.buildDirectory.dir('runtime-libs')
 }
