@@ -111,7 +111,13 @@ public class ZarrPixelBuffer implements PixelBuffer {
         this.zarrMetadataCache = zarrMetadataCache;
         this.zarrArrayCache = zarrArrayCache;
         try {
-            rootGroupAttributes = this.zarrMetadataCache.get(new ZarrPath(root, "")).get();
+            Map<String, Object> tmp = this.zarrMetadataCache.get(new ZarrPath(root, "")).get();
+            if (tmp.containsKey("ome")) {
+                rootGroupAttributes = (Map<String, Object>) tmp.get("ome");
+            } else {
+                rootGroupAttributes = tmp;
+                log.warn("Attributes should be under 'ome' key!");
+            }
         } catch (ExecutionException | InterruptedException e) {
             throw new IOException(e);
         }
