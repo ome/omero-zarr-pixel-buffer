@@ -18,11 +18,9 @@
 
 package com.glencoesoftware.omero.zarr;
 
-import static omero.rtypes.rdouble;
 import static omero.rtypes.rlong;
 import static omero.rtypes.rstring;
 
-import com.glencoesoftware.omero.zarr.ZarrPixelsService;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -60,8 +58,12 @@ public class ZarrPixelsServiceTest {
         pixelsDir.deleteOnExit();
         File memoDir = Files.createTempDirectory("memoizer").toFile();
         memoDir.deleteOnExit();
-        pixelsService = new ZarrPixelsService(
-            pixelsDir.getAbsolutePath(), false, memoDir, 0L, null, null, null, null, 0, 0, 0);
+        try {
+            pixelsService = new ZarrPixelsService(
+                pixelsDir.getAbsolutePath(), false, memoDir, 0L, null, null, null, null, 0, 0, 0);
+        } catch (Exception e) {
+            throw new IOException(e);
+        }
         mask = new MaskI();
         image = new ImageI();
     }
