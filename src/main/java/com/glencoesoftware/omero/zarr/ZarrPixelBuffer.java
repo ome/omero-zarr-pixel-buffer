@@ -884,10 +884,13 @@ public class ZarrPixelBuffer implements PixelBuffer {
 
         Map<Integer, Integer> tmpMap = new HashMap<>();
         try {
-            array = zarrArrayCache.get(new ZarrPath(root, Integer.toString(this.resolutionLevel))).get();
-            arrayMetadata = zarrMetadataCache.get(new ZarrPath(root, Integer.toString(this.resolutionLevel))).get();
+            array = zarrArrayCache.get(new ZarrPath(root,
+                Integer.toString(this.resolutionLevel))).get();
+            arrayMetadata = zarrMetadataCache.get(new ZarrPath(root,
+                Integer.toString(this.resolutionLevel))).get();
 
-            Map<String, Object> fullResolutionArrayMetadata = zarrMetadataCache.get(new ZarrPath(root, "0")).get();
+            Map<String, Object> fullResolutionArrayMetadata = zarrMetadataCache
+                .get(new ZarrPath(root, "0")).get();
 
             if (axesOrder.containsKey(Axis.Z)) {
                 // map each Z index in the full resolution array

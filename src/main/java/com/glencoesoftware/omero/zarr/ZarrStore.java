@@ -73,7 +73,7 @@ public class ZarrStore {
     public ZarrStore(final String orgPath) throws URISyntaxException, IllegalArgumentException {
         this.path = orgPath;
         int zarrIndex = orgPath.lastIndexOf(".zarr");
-        if (zarrIndex < 0){
+        if (zarrIndex < 0) {
             throw new IllegalArgumentException("Path is not a .zarr");
         }
         String pathToZarr = orgPath.substring(0, zarrIndex + 5);
@@ -95,7 +95,7 @@ public class ZarrStore {
             store = new HttpStore(storePath).resolve(rest);
         } else if (uri.getScheme().startsWith("s3")) {
             String[] tmp = path.replaceFirst("s3://", "").replaceAll("\\?.+", "").split("/");
-            String host = tmp[0];
+            final String host = tmp[0];
             final String bucket = tmp[1];
             final String[] rest = Arrays.copyOfRange(tmp, 2, tmp.length);
             this.name = path.substring(pathToZarr.lastIndexOf("/") + 1);
@@ -126,13 +126,14 @@ public class ZarrStore {
 
             if (params.containsKey("anonymous")) {
                 clientBuilder.credentialsProvider(AnonymousCredentialsProvider.create());
-            } else if (params.containsKey("accessKeyId") && params.containsKey("secretAccessKey")) {
+            } else if (params.containsKey("accessKeyId")
+                && params.containsKey("secretAccessKey")) {
                 AwsBasicCredentials credentials = AwsBasicCredentials
                     .create(params.get("accessKeyId"), params.get("secretAccessKey"));
                 clientBuilder.credentialsProvider(StaticCredentialsProvider.create(credentials));
-            }
-            else if (params.containsKey("profile")) {
-                clientBuilder.credentialsProvider(ProfileCredentialsProvider.create(params.get("profile")));
+            } else if (params.containsKey("profile")) {
+                clientBuilder.credentialsProvider(ProfileCredentialsProvider
+                    .create(params.get("profile")));
             }
             if (params.containsKey("region")) {
                 clientBuilder.region(Region.of(params.get("region")));
@@ -155,9 +156,9 @@ public class ZarrStore {
     public Group getGroup(String path) throws IOException {
         try {
             if (path.isEmpty()) {
-                return (Group) Node.open(store);
+                return Group.open(store);
             } else {
-                return (Group) Node.open(store.resolve(path.split("/")));
+                return Group.open(store.resolve(path.split("/")));
             }
         } catch (Exception e) {
             throw new IOException("Failed to open group at path: " + store + " / " + path, e);
@@ -174,9 +175,9 @@ public class ZarrStore {
     public Array getArray(String path) throws IOException {
         try {
             if (path.isEmpty()) {
-                return (Array) Node.open(store);
+                return Array.open(store);
             } else {
-                return (Array) Node.open(store.resolve(path.split("/")));
+                return Array.open(store.resolve(path.split("/")));
             }
         } catch (Exception e) {
             throw new IOException("Failed to open array at path: " + store + " / " + path, e);
@@ -199,36 +200,6 @@ public class ZarrStore {
                 "Failed to get array metadata from path: " + store + " / " + path, e);
         }
     }
-
-    /**
-     * Retrieves metadata (group or array) from a Zarr node at the specified path.
-     *
-     * @param path the relative path to the node within the store
-     * @return a map containing metadata
-     * @throws RuntimeException if the node cannot be accessed or metadata cannot be retrieved
-     */
-    public Map<String, Object> metadata(String path) {
-        try {
-            Node node = null;
-            if (path.isEmpty()) {
-                node = Node.open(store);
-            } else {
-                node = Node.open(store.resolve(path.split("/")));
-            }
-            if (node instanceof Array) {
-                return metadataFromArray((Array) node);
-            } else if (node instanceof Group) {
-                return metadataFromGroup((Group) node);
-            } else {
-                throw new RuntimeException(
-                    "Failed to get metadata from path: " + store + " / " + path);
-            }
-        } catch (IOException | ZarrException e) {
-            throw new RuntimeException(
-                "Failed to get array metadata from path: " + store + " / " + path, e);
-        }
-    }
-
 
     /**
      * Extracts metadata from a Zarr array object.
@@ -258,6 +229,35 @@ public class ZarrStore {
         res.put("chunkShape", m.chunkShape());
         res.put("dataType", m.dataType());
         return res;
+    }
+
+    /**
+     * Retrieves metadata (group or array) from a Zarr node at the specified path.
+     *
+     * @param path the relative path to the node within the store
+     * @return a map containing metadata
+     * @throws RuntimeException if the node cannot be accessed or metadata cannot be retrieved
+     */
+    public Map<String, Object> metadata(String path) {
+        try {
+            Node node = null;
+            if (path.isEmpty()) {
+                node = Node.open(store);
+            } else {
+                node = Node.open(store.resolve(path.split("/")));
+            }
+            if (node instanceof Array) {
+                return metadataFromArray((Array) node);
+            } else if (node instanceof Group) {
+                return metadataFromGroup((Group) node);
+            } else {
+                throw new RuntimeException(
+                    "Failed to get metadata from path: " + store + " / " + path);
+            }
+        } catch (IOException | ZarrException e) {
+            throw new RuntimeException(
+                "Failed to get array metadata from path: " + store + " / " + path, e);
+        }
     }
 
     /**

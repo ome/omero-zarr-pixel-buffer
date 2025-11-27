@@ -97,7 +97,7 @@ public class ZarrPixelsService extends ome.io.nio.PixelsService {
     /**
      * Retrieves Zarr metadata from a given path.
      *
-     * @param path path to get Zarr metadata from
+     * @param zp path to get Zarr metadata from
      * @return See above.
      * @throws URISyntaxException       If something isn't right.
      * @throws IllegalArgumentException If something isn't right.
@@ -110,7 +110,7 @@ public class ZarrPixelsService extends ome.io.nio.PixelsService {
     /**
      * Opens a Zarr array at a given path.
      *
-     * @param path path to open a Zarr array from
+     * @param zp path to open a Zarr array from
      * @return See above.
      * @throws URISyntaxException       If something isn't right.
      * @throws IllegalArgumentException If something isn't right.
