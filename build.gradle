@@ -12,7 +12,7 @@ version = '0.6.2-SNAPSHOT'
 ext {
     awsSdkVersion = '2.34.6'
     jacksonVersion = '2.20.0'
-    zarrJavaVersion = '0.0.5'
+    zarrJavaVersion = '0.0.9'
     formatsVersion = '8.3.0'
 }
 
