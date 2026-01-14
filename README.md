@@ -17,8 +17,11 @@ The OMERO Zarr pixel buffer follows the principles of a classical OMERO.server
 [service extension](https://omero.readthedocs.io/en/stable/developers/Server/ExtendingOmero.html#services).
 It can be included in an OMERO deployment:
 
--   either by adding the JAR file and all its dependencies (`jzarr`, `caffeine`,
-    `s3fs`,  `aws-java-sdk-s3`, `tika-core`) under the `lib/server` directory
+-   either by adding the JAR file and all its dependencies ([jzarr](https://repo1.maven.org/maven2/dev/zarr/jzarr/), [caffeine](https://repo1.maven.org/maven2/com/github/ben-manes/caffeine/caffeine/),
+    [s3fs](https://repo1.maven.org/maven2/org/lasersonlab/s3fs/),  [aws-java-sdk-s3](https://repo1.maven.org/maven2/com/amazonaws/aws-java-sdk-s3/), 
+	[aws-java-sdk-core](https://repo1.maven.org/maven2/com/amazonaws/aws-java-sdk-core/), [aws-java-sdk-kms](https://repo1.maven.org/maven2/com/amazonaws/aws-java-sdk-kms/),
+	[jmespath-java](https://repo1.maven.org/maven2/com/amazonaws/jmespath-java/), [jackson-databind](https://repo1.maven.org/maven2/com/fasterxml/jackson/core/jackson-databind/), 
+	[tika-core](https://repo1.maven.org/maven2/org/apache/tika/tika-core/)) under the `lib/server` directory
     of OMERO.server and restarting the server,
 
 -   or by building a modified version of the OMERO.server binary after declaring
