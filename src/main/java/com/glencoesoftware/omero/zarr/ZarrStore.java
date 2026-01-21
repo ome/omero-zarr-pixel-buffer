@@ -18,6 +18,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.auth.credentials.AnonymousCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.ProfileCredentialsProvider;
@@ -40,6 +41,8 @@ import software.amazon.awssdk.services.s3.S3Configuration;
  * </ul>
  */
 public class ZarrStore {
+
+    private static final org.slf4j.Logger log = LoggerFactory.getLogger(ZarrStore.class);
 
     /** The underlying store handle for accessing Zarr data. */
     StoreHandle store;
@@ -116,9 +119,13 @@ public class ZarrStore {
 
             }
 
+            // TODO: This fails on the omero-server with various ClassNotFoundExceptions!
+            // Although the jars are in lib/server!
             URI endpoint = new URI("https://" + host);
+            log.info("Building s3 client for: " + endpoint);
             S3ClientBuilder clientBuilder = S3Client.builder().endpointOverride(endpoint)
                 .region(Region.US_EAST_1); // Default region required even for non-AWS
+            log.info("Done: Building s3 client");
 
             S3Configuration s3Config = S3Configuration.builder().pathStyleAccessEnabled(true)
                 .build();
