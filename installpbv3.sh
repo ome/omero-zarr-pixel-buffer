@@ -37,7 +37,8 @@ wget -P $OMERO_DIST/lib/server https://repo1.maven.org/maven2/software/amazon/aw
 wget -P $OMERO_DIST/lib/server https://repo1.maven.org/maven2/com/fasterxml/jackson/core/jackson-core/${jacksonVersion}/jackson-core-${jacksonVersion}.jar
 wget -P $OMERO_DIST/lib/server https://repo1.maven.org/maven2/com/fasterxml/jackson/core/jackson-databind/${jacksonVersion}/jackson-databind-${jacksonVersion}.jar
 wget -P $OMERO_DIST/lib/server https://repo1.maven.org/maven2/com/fasterxml/jackson/datatype/jackson-datatype-jdk8/${jacksonVersion}/jackson-datatype-jdk8-${jacksonVersion}.jar
-wget -P $OMERO_DIST/lib/server https://repo1.maven.org/maven2/com/fasterxml/jackson/core/jackson-annotations/${jacksonVersion}/jackson-annotations-${jacksonVersion}.jar
+#wget -P $OMERO_DIST/lib/server https://repo1.maven.org/maven2/com/fasterxml/jackson/core/jackson-annotations/${jacksonVersion}/jackson-annotations-${jacksonVersion}.jar
+wget -P $OMERO_DIST/lib/server https://repo1.maven.org/maven2/com/fasterxml/jackson/core/jackson-annotations/2.20/jackson-annotations-2.20.jar
 
 wget -P $OMERO_DIST/lib/server https://repo.maven.apache.org/maven2/ch/qos/logback/logback-classic/${logbackVersion}/logback-classic-${logbackVersion}.jar
 wget -P $OMERO_DIST/lib/server https://repo.maven.apache.org/maven2/ch/qos/logback/logback-core/${logbackVersion}/logback-core-${logbackVersion}.jar
