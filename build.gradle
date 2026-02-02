@@ -12,7 +12,7 @@ version = '0.6.2-SNAPSHOT'
 ext {
     awsSdkVersion = '2.34.6'
     jacksonVersion = '2.20.0'
-    zarrJavaVersion = '0.0.9'
+    zarrJavaVersion = '0.0.10'
     formatsVersion = '8.3.0'
 }
 
@@ -47,8 +47,6 @@ dependencies {
     implementation 'com.github.ben-manes.caffeine:caffeine:3.1.8'
     implementation "dev.zarr:zarr-java:${zarrJavaVersion}"
 
-    implementation "software.amazon.awssdk:aws-sdk-java:${awsSdkVersion}"
-
     implementation "com.fasterxml.jackson.core:jackson-core:${jacksonVersion}"
     implementation "com.fasterxml.jackson.core:jackson-databind:${jacksonVersion}"
     implementation "ome:formats-api:${formatsVersion}"
@@ -59,6 +57,9 @@ dependencies {
     implementation "software.amazon.awssdk:aws-core:${awsSdkVersion}"
     implementation "software.amazon.awssdk:sdk-core:${awsSdkVersion}"
     implementation "software.amazon.awssdk:retries:${awsSdkVersion}"
+    implementation "software.amazon.awssdk:aws-sdk-java:${awsSdkVersion}"
+    //implementation "software.amazon.awssdk:apache-client:${awsSdkVersion}" Might not be needed
+
     implementation 'edu.ucar:cdm-core:5.9.1'
     implementation 'org.perf4j:perf4j:0.9.16'
     implementation 'org.slf4j:slf4j-api:2.0.9'
