@@ -211,7 +211,9 @@ public class ZarrPixelBuffer implements PixelBuffer {
         }
         try {
             ByteBuffer asByteBuffer = ByteBuffer.wrap(buffer);
-            asByteBuffer.put(array.read(offset, shape).getDataAsByteBuffer());
+            ucar.ma2.Array array = this.array.read(offset, shape);
+            ByteBuffer buf = array.getDataAsByteBuffer();
+            asByteBuffer.put(buf);
         } catch (Exception e) {
             log.error("Error reading Zarr data", e);
             throw new IOException(e);
