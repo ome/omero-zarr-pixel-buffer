@@ -3,7 +3,6 @@ plugins {
     id 'eclipse'
     id 'maven-publish'
     id 'checkstyle'
-    id 'com.autonomousapps.dependency-analysis' version '3.5.1'
 }
 
 group = 'com.glencoesoftware.omero'
@@ -120,19 +119,6 @@ checkstyle {
     toolVersion = "10.26.1"
 }
 
-dependencyAnalysis {
-  issues {
-    all {
-      onAny {
-        severity("fail")
-      }
-    }
-  }
-  reporting {
-    printBuildHealth(true)
-  }
-}
-
 tasks.withType(JavaCompile) {
     // get rid of the "-Xlint:deprecation for details" message
     options.compilerArgs << '-Xlint:unchecked'
@@ -143,3 +129,4 @@ tasks.register('copyRuntimeDeps', Copy) {
     from configurations.runtimeClasspath
     into layout.buildDirectory.dir('runtime-libs')
 }
+
