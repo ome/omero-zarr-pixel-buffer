@@ -20,6 +20,7 @@ package com.glencoesoftware.omero.zarr;
 
 import com.github.benmanes.caffeine.cache.AsyncLoadingCache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import dev.zarr.zarrjava.ZarrException;
 import dev.zarr.zarrjava.core.Array;
 import java.io.File;
 import java.io.IOException;
@@ -222,9 +223,10 @@ public class ZarrPixelsService extends ome.io.nio.PixelsService {
      * @return A pixel buffer instance.
      * @throws URISyntaxException       If something isn't right.
      * @throws IllegalArgumentException If something isn't right.
+     * @throws ZarrException            If something isn't right.
      */
     public ZarrPixelBuffer getLabelImagePixelBuffer(Mask mask)
-        throws IOException, IllegalArgumentException, URISyntaxException {
+        throws IOException, IllegalArgumentException, URISyntaxException, ZarrException {
         Pixels pixels = new ome.model.core.Pixels();
         pixels.setSizeX(mask.getWidth().intValue());
         pixels.setSizeY(mask.getHeight().intValue());
@@ -236,6 +238,7 @@ public class ZarrPixelsService extends ome.io.nio.PixelsService {
             throw new IllegalArgumentException("No root for Mask:" + mask.getId());
         }
         ZarrStore store = new ZarrStore(root);
+        log.info("Using ZarrStore: " + store);
         return new ZarrPixelBuffer(pixels, store, maxPlaneWidth, maxPlaneHeight, zarrMetadataCache,
             zarrArrayCache);
     }
@@ -262,7 +265,7 @@ public class ZarrPixelsService extends ome.io.nio.PixelsService {
                 return null;
             }
             ZarrStore store = new ZarrStore(uri);
-            log.info("OME-NGFF root is: " + uri);
+            log.info("Using ZarrStore: " + store);
             try {
                 ZarrPixelBuffer v = new ZarrPixelBuffer(pixels, store, maxPlaneWidth,
                     maxPlaneHeight, zarrMetadataCache, zarrArrayCache);

@@ -125,6 +125,10 @@ public class ZarrPixelBuffer implements PixelBuffer {
         if (!rootGroupAttributes.containsKey("multiscales")) {
             throw new IllegalArgumentException("Missing multiscales metadata!");
         }
+        if (rootGroupAttributes.containsKey("version")) {
+            log.info("NGFF version: " + rootGroupAttributes.get("version"));
+        }
+
         getAxesOrder();
         this.resolutionLevels = this.getResolutionLevels();
         setResolutionLevel(this.resolutionLevels - 1);

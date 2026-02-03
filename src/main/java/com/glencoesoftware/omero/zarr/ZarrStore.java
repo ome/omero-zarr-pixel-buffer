@@ -8,6 +8,7 @@ import dev.zarr.zarrjava.core.Node;
 import dev.zarr.zarrjava.store.FilesystemStore;
 import dev.zarr.zarrjava.store.HttpStore;
 import dev.zarr.zarrjava.store.S3Store;
+import dev.zarr.zarrjava.store.Store;
 import dev.zarr.zarrjava.store.StoreHandle;
 import dev.zarr.zarrjava.v2.Endianness;
 import java.io.File;
@@ -47,6 +48,12 @@ public class ZarrStore {
     /** The underlying store handle for accessing Zarr data. */
     StoreHandle store;
 
+    /** Store interface; just for debug output. */
+    Class<? extends Store> iface;
+
+    /** Zarr version; just for debug output. */
+    String zarrVersion = "N/A";
+
     /** The full path to the Zarr store including the .zarr extension. */
     String path;
 
@@ -72,8 +79,11 @@ public class ZarrStore {
      * @throws URISyntaxException       if the path is not a valid URI
      * @throws IllegalArgumentException if the path does not contain .zarr or uses an unsupported
      *                                  URI scheme
+     * @throws ZarrException            if there was a problem reading the zarr
+     * @throws IOException              if there was a problem reading the zarr
      */
-    public ZarrStore(final String orgPath) throws URISyntaxException, IllegalArgumentException {
+    public ZarrStore(final String orgPath) throws URISyntaxException, IllegalArgumentException,
+        IOException, ZarrException {
         this.path = orgPath;
         int zarrIndex = orgPath.lastIndexOf(".zarr");
         if (zarrIndex < 0) {
@@ -87,6 +97,7 @@ public class ZarrStore {
             String rest = path.substring(sep + 1);
             this.name = path.substring(pathToZarr.lastIndexOf(File.separator) + 1);
             store = new FilesystemStore(storePath).resolve(rest);
+            iface = FilesystemStore.class;
         } else if (uri.getScheme().startsWith("http")) {
             int sep = path.lastIndexOf("/");
             String storePath = path.substring(0, sep);
@@ -96,6 +107,7 @@ public class ZarrStore {
                 this.name = this.name.substring(0, this.name.indexOf("?"));
             }
             store = new HttpStore(storePath).resolve(rest);
+            iface = HttpStore.class;
         } else if (uri.getScheme().startsWith("s3")) {
             String[] tmp = path.replaceFirst("s3://", "").replaceAll("\\?.+", "").split("/");
             final String host = tmp[0];
@@ -148,8 +160,15 @@ public class ZarrStore {
 
             S3Client client = clientBuilder.build();
             store = new S3Store(client, bucket, null).resolve(rest);
+            iface = S3Store.class;
         } else {
             throw new IllegalArgumentException("Unsupported URI scheme: " + uri.getScheme());
+        }
+        Group group = Group.open(store);
+        if (group instanceof dev.zarr.zarrjava.v2.Group) {
+            zarrVersion = "2";
+        } else if (group instanceof dev.zarr.zarrjava.v3.Group) {
+            zarrVersion = "3";
         }
     }
 
@@ -338,7 +357,8 @@ public class ZarrStore {
      */
     @Override
     public String toString() {
-        return "ZarrStore{" + "path='" + path + '\'' + ", name='" + name + '\'' + '}';
+        return "ZarrStore {" + "path = " + path + " , name = " + name
+            + " , interface = " + iface.getName() + " , zarrVersion = " + zarrVersion + "}";
     }
 
     /**
