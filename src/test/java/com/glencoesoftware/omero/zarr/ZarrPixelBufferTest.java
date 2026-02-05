@@ -23,6 +23,7 @@ import static org.junit.Assert.assertEquals;
 
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.glencoesoftware.bioformats2raw.Converter;
+import com.glencoesoftware.bioformats2raw.SupportedVersions;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -52,10 +53,16 @@ public class ZarrPixelBufferTest {
     static final int SIZE_Y = 128;
     static final String PIXEL_TYPE = "uint8";
 
-    static final String NGFF05_HTTP = "";
-    static final String NGFF04_HTTP = "";
-    static final String NGFF05_S3_AUTH = "";
-    static final String NGFF04_S3_AUTH = "";
+    static final String NGFF05_HTTP = "https://public.ltd.ovh/output_v05.zarr/0";
+    static final String NGFF04_HTTP = "https://public.ltd.ovh/output_v04.zarr/0";
+
+    static final String NGFF05_S3_AUTH = "s3://s3.ltd.ovh/testing/output_v05.zarr/0"
+        + "?accessKeyId=GK1d5c11b327c406ae0eaa6db9"
+        + "&secretAccessKey=4d791c7c6d4a93252f5a25d2d7f66856ec281cd2ae2ee373ecc8075b34a5ad32";
+    static final String NGFF04_S3_AUTH = "s3://s3.ltd.ovh/testing/output_v04.zarr/0"
+        + "?accessKeyId=GK1d5c11b327c406ae0eaa6db9"
+        + "&secretAccessKey=4d791c7c6d4a93252f5a25d2d7f66856ec281cd2ae2ee373ecc8075b34a5ad32";
+
     static final String NGFF05_S3_ANON = "";
     static final String NGFF04_S3_ANON = "";
 
@@ -88,17 +95,29 @@ public class ZarrPixelBufferTest {
         test(output.toString());
     }
 
-    // @Test
-    // public void testNGFF05HTTP() throws Exception {
-    //     System.out.println("Testing NGFF05HTTP");
-    //     test(NGFF05_HTTP);
-    // }
+    @Test
+    public void testNGFF05HTTP() throws Exception {
+        System.out.println("Testing NGFF05HTTP");
+        test(NGFF05_HTTP);
+    }
 
-    // @Test
-    // public void testNGFF04HTTP() throws Exception {
-    //     System.out.println("Testing NGFF04HTTP");
-    //     test(NGFF04_HTTP);
-    // }
+    @Test
+    public void testNGFF04HTTP() throws Exception {
+        System.out.println("Testing NGFF04HTTP");
+        test(NGFF04_HTTP);
+    }
+
+    @Test
+    public void testNGFF05S3Auth() throws Exception {
+        System.out.println("Testing testNGFF05S3Auth");
+        test(NGFF05_S3_AUTH);
+    }
+
+    @Test
+    public void testNGFF04S3Auth() throws Exception {
+        System.out.println("Testing testNGFF04S3Auth");
+        test(NGFF04_S3_AUTH);
+    }
 
     void test(String path) throws Exception {
         System.out.println("Testing path: " + path);
@@ -115,10 +134,14 @@ public class ZarrPixelBufferTest {
      *
      * @param additionalArgs CLI arguments as needed beyond "input output"
      */
-    void assertBioFormats2Raw(Path input, Path output, String... additionalArgs)
+    void assertBioFormats2Raw(Path input, Path output, String ngffVersion, String... additionalArgs)
             throws IOException {
         List<String> args = new ArrayList<String>(
                 Arrays.asList(new String[] { "--compression", "null" }));
+        if (ngffVersion != null) {
+            args.add("--ngff-version");
+            args.add(ngffVersion);
+        }
         for (String arg : additionalArgs) {
             args.add(arg);
         }
@@ -127,11 +150,12 @@ public class ZarrPixelBufferTest {
         try {
             Converter converter = new Converter();
             CommandLine cli = new CommandLine(converter);
-            System.out.println("args: " + args);
             cli.execute(args.toArray(new String[]{}));
-            Assert.assertTrue(Files.exists(output.resolve(".zattrs")));
-            // if v3:
-            //Assert.assertTrue(Files.exists(output.resolve("zarr.json")));
+            if (ngffVersion != null && ngffVersion.equals(SupportedVersions.NGFF_05.toString())) {
+                Assert.assertTrue(Files.exists(output.resolve("zarr.json")));
+            } else {
+                Assert.assertTrue(Files.exists(output.resolve(".zattrs")));
+            }
             Assert.assertTrue(Files.exists(
                     output.resolve("OME").resolve("METADATA.ome.xml")));
         } catch (RuntimeException rt) {
@@ -203,7 +227,6 @@ public class ZarrPixelBufferTest {
                 }
             }
             Path ini = Files.createTempFile(sb.toString(), ".fake.ini");
-            System.out.println("Created ini file: " + ini);
             File iniAsFile = ini.toFile();
             String iniPath = iniAsFile.getAbsolutePath();
             String fakePath = iniPath.substring(0, iniPath.length() - 4);
@@ -246,9 +269,8 @@ public class ZarrPixelBufferTest {
                 "sizeZ", Integer.toString(sizeZ),
                 "sizeY", Integer.toString(sizeY),
                 "sizeX", Integer.toString(sizeX),
-                "pixelType", pixelType,
-                "ngff-version", ngffVersion);
-        assertBioFormats2Raw(input, path, options);
+                "pixelType", pixelType);
+        assertBioFormats2Raw(input, path, ngffVersion, options);
     }
 
     /**
