@@ -8,39 +8,65 @@ plugins {
 group = 'com.glencoesoftware.omero'
 version = '0.6.2-SNAPSHOT'
 
-sourceCompatibility = 1.11
-targetCompatibility = 1.11
+ext {
+    awsSdkVersion = '2.34.6'
+    jacksonVersion = '2.20.0'
+    zarrJavaVersion = '0.0.10'
+    formatsVersion = '8.3.0'
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_11
+    targetCompatibility = JavaVersion.VERSION_11
+}
 
 repositories {
+    mavenLocal()
     mavenCentral()
+    gradlePluginPortal()
     maven {
-        name 'Unidata'
-        url 'https://artifacts.unidata.ucar.edu/repository/unidata-releases/'
+        name = 'Unidata'
+        url = 'https://artifacts.unidata.ucar.edu/repository/unidata-releases/'
     }
     maven {
-        url 'https://artifacts.glencoesoftware.com/artifactory/ome.releases'
+        url = 'https://artifacts.glencoesoftware.com/artifactory/ome.releases'
     }
     maven {
-        url 'https://artifacts.glencoesoftware.com/artifactory/ome.external'
+        url = 'https://artifacts.glencoesoftware.com/artifactory/ome.external'
     }
     maven {
-        url 'https://artifacts.glencoesoftware.com/artifactory/scijava-thirdparty'
+        url = 'https://artifacts.glencoesoftware.com/artifactory/scijava-thirdparty'
     }
     maven {
-        url 'https://repo.glencoesoftware.com/repository/bioformats2raw2ometiff/'
+        url = 'https://repo.glencoesoftware.com/repository/bioformats2raw2ometiff/'
     }
 }
 
 dependencies {
-    api 'org.openmicroscopy:omero-blitz:5.8.3'
     implementation 'com.github.ben-manes.caffeine:caffeine:3.1.8'
-    implementation 'dev.zarr:jzarr:0.4.2'
-    implementation 'org.lasersonlab:s3fs:2.2.3'
-    implementation 'com.amazonaws:aws-java-sdk-s3:1.12.659'
-    implementation 'org.apache.tika:tika-core:1.28.5'
+    implementation "dev.zarr:zarr-java:${zarrJavaVersion}"
 
+    implementation "com.fasterxml.jackson.core:jackson-core:${jacksonVersion}"
+    implementation "com.fasterxml.jackson.core:jackson-databind:${jacksonVersion}"
+    implementation "ome:formats-api:${formatsVersion}"
+    implementation "ome:formats-gpl:${formatsVersion}"
+    implementation 'org.apache.tika:tika-core:1.28.5'
+    implementation 'ch.qos.logback:logback-classic:1.3.14'
+
+    implementation "software.amazon.awssdk:aws-core:${awsSdkVersion}"
+    implementation "software.amazon.awssdk:sdk-core:${awsSdkVersion}"
+    implementation "software.amazon.awssdk:retries:${awsSdkVersion}"
+    implementation "software.amazon.awssdk:url-connection-client:${awsSdkVersion}"
+
+    implementation 'edu.ucar:cdm-core:5.9.1'
+    implementation 'org.perf4j:perf4j:0.9.16'
+    implementation 'org.slf4j:slf4j-api:2.0.9'
+
+    implementation 'org.openmicroscopy:omero-blitz:5.8.3'
+
+    testImplementation 'junit:junit:4.13.2'
     testImplementation 'info.picocli:picocli:4.7.5'
-    testImplementation 'com.glencoesoftware:bioformats2raw:0.11.0'
+    testImplementation 'com.glencoesoftware:bioformats2raw:0.12.0-rc1'
 }
 
 test {
@@ -65,7 +91,7 @@ publishing {
 
     repositories {
         maven {
-            url 'https://artifacts.glencoesoftware.com/artifactory/gs-omero-snapshots-local/'
+            url = 'https://artifacts.glencoesoftware.com/artifactory/gs-omero-snapshots-local/'
             credentials {
                username = project.properties.ArtifactoryUserName
                password = project.properties.ArtifactoryPassword
@@ -92,3 +118,15 @@ jar {
 checkstyle {
     toolVersion = "10.26.1"
 }
+
+tasks.withType(JavaCompile) {
+    // get rid of the "-Xlint:deprecation for details" message
+    options.compilerArgs << '-Xlint:unchecked'
+    options.deprecation = true
+}
+
+tasks.register('copyRuntimeDeps', Copy) {
+    from configurations.runtimeClasspath
+    into layout.buildDirectory.dir('runtime-libs')
+}
+
