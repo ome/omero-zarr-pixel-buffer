@@ -9,7 +9,7 @@ OZPB=/tmp/omero-zarr-pixel-buffer-0.6.2-SNAPSHOT.jar
 awsSdkVersion=2.34.6
 jacksonVersion=2.20.0
 logbackVersion=1.3.14
-zarrJavaVersion=0.0.9
+zarrJavaVersion=0.0.10
 formatsVersion=8.3.0
 
 # Install omero-zarr-pixel-buffer
@@ -23,21 +23,18 @@ rm -rf aws-java-sdk-* jackson-annotations.jar jackson-core.jar jackson-databind.
 wget -P $OMERO_DIST/lib/server https://repo1.maven.org/maven2/software/amazon/awssdk/s3/${awsSdkVersion}/s3-${awsSdkVersion}.jar
 wget -P $OMERO_DIST/lib/server https://repo1.maven.org/maven2/software/amazon/awssdk/auth/${awsSdkVersion}/auth-${awsSdkVersion}.jar
 wget -P $OMERO_DIST/lib/server https://repo1.maven.org/maven2/software/amazon/awssdk/aws-core/${awsSdkVersion}/aws-core-${awsSdkVersion}.jar
-wget -P $OMERO_DIST/lib/server https://repo1.maven.org/maven2/software/amazon/awssdk/aws-sdk-java/${awsSdkVersion}/aws-sdk-java-${awsSdkVersion}.jar
 wget -P $OMERO_DIST/lib/server https://repo1.maven.org/maven2/software/amazon/awssdk/sdk-core/${awsSdkVersion}/sdk-core-${awsSdkVersion}.jar
 wget -P $OMERO_DIST/lib/server https://repo1.maven.org/maven2/software/amazon/awssdk/annotations/${awsSdkVersion}/annotations-${awsSdkVersion}.jar
 wget -P $OMERO_DIST/lib/server https://repo1.maven.org/maven2/software/amazon/awssdk/regions/${awsSdkVersion}/regions-${awsSdkVersion}.jar
 wget -P $OMERO_DIST/lib/server https://repo1.maven.org/maven2/software/amazon/awssdk/identity-spi/${awsSdkVersion}/identity-spi-${awsSdkVersion}.jar
 wget -P $OMERO_DIST/lib/server https://repo1.maven.org/maven2/software/amazon/awssdk/utils/${awsSdkVersion}/utils-${awsSdkVersion}.jar
-wget -P $OMERO_DIST/lib/server https://repo1.maven.org/maven2/software/amazon/awssdk/apache-client/${awsSdkVersion}/apache-client-${awsSdkVersion}.jar
-wget -P $OMERO_DIST/lib/server https://repo1.maven.org/maven2/software/amazon/awssdk/netty-nio-client/${awsSdkVersion}/netty-nio-client-${awsSdkVersion}.jar
 wget -P $OMERO_DIST/lib/server https://repo1.maven.org/maven2/software/amazon/awssdk/http-client-spi/${awsSdkVersion}/http-client-spi-${awsSdkVersion}.jar
 wget -P $OMERO_DIST/lib/server https://repo1.maven.org/maven2/software/amazon/awssdk/retries/${awsSdkVersion}/retries-${awsSdkVersion}.jar
+wget -P $OMERO_DIST/lib/server https://repo1.maven.org/maven2/software/amazon/awssdk/url-connection-client/${awsSdkVersion}/url-connection-client-${awsSdkVersion}.jar
 
 wget -P $OMERO_DIST/lib/server https://repo1.maven.org/maven2/com/fasterxml/jackson/core/jackson-core/${jacksonVersion}/jackson-core-${jacksonVersion}.jar
 wget -P $OMERO_DIST/lib/server https://repo1.maven.org/maven2/com/fasterxml/jackson/core/jackson-databind/${jacksonVersion}/jackson-databind-${jacksonVersion}.jar
 wget -P $OMERO_DIST/lib/server https://repo1.maven.org/maven2/com/fasterxml/jackson/datatype/jackson-datatype-jdk8/${jacksonVersion}/jackson-datatype-jdk8-${jacksonVersion}.jar
-#wget -P $OMERO_DIST/lib/server https://repo1.maven.org/maven2/com/fasterxml/jackson/core/jackson-annotations/${jacksonVersion}/jackson-annotations-${jacksonVersion}.jar
 wget -P $OMERO_DIST/lib/server https://repo1.maven.org/maven2/com/fasterxml/jackson/core/jackson-annotations/2.20/jackson-annotations-2.20.jar
 
 wget -P $OMERO_DIST/lib/server https://repo.maven.apache.org/maven2/ch/qos/logback/logback-classic/${logbackVersion}/logback-classic-${logbackVersion}.jar

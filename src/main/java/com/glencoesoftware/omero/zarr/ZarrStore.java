@@ -15,6 +15,7 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
@@ -24,6 +25,7 @@ import software.amazon.awssdk.auth.credentials.AnonymousCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.ProfileCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.http.urlconnection.UrlConnectionHttpClient;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.S3ClientBuilder;
@@ -135,9 +137,12 @@ public class ZarrStore {
             // Although the jars are in lib/server!
             URI endpoint = new URI("https://" + host);
             log.info("Building s3 client for: " + endpoint);
-            S3ClientBuilder clientBuilder = S3Client.builder().endpointOverride(endpoint)
-                .region(Region.US_EAST_1); // Default region required even for non-AWS
-            log.info("Done: Building s3 client");
+
+            S3ClientBuilder clientBuilder =  S3Client.builder()
+                    .httpClientBuilder(UrlConnectionHttpClient.builder()
+                            .socketTimeout(Duration.ofMinutes(5)));
+            clientBuilder.endpointOverride(endpoint);
+            clientBuilder.region(Region.US_EAST_1); // Default region required even for non-AWS
 
             S3Configuration s3Config = S3Configuration.builder().pathStyleAccessEnabled(true)
                 .build();
