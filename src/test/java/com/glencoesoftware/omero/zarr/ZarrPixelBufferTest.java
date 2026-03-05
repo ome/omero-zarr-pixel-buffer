@@ -63,8 +63,8 @@ public class ZarrPixelBufferTest {
         + "?accessKeyId=GK1d5c11b327c406ae0eaa6db9"
         + "&secretAccessKey=4d791c7c6d4a93252f5a25d2d7f66856ec281cd2ae2ee373ecc8075b34a5ad32";
 
-    static final String NGFF05_S3_ANON = "";
-    static final String NGFF04_S3_ANON = "";
+    static final String NGFF05_S3_ANON = "s3://public.ltd.ovh/output_v05.zarr/0/?anonymous=true";
+    static final String NGFF04_S3_ANON = "s3://public.ltd.ovh/output_v04.zarr/0/?anonymous=true";
 
     @Rule
     public TemporaryFolder tmpDir = new TemporaryFolder();
@@ -117,6 +117,18 @@ public class ZarrPixelBufferTest {
     public void testNGFF04S3Auth() throws Exception {
         System.out.println("Testing testNGFF04S3Auth");
         test(NGFF04_S3_AUTH);
+    }
+
+    @Test
+    public void testNGFF05S3Anon() throws Exception {
+        System.out.println("Testing testNGFF05S3Anon");
+        test(NGFF05_S3_ANON);
+    }
+
+    @Test
+    public void testNGFF04S3Anon() throws Exception {
+        System.out.println("Testing testNGFF04S3Anon");
+        test(NGFF04_S3_ANON);
     }
 
     void test(String path) throws Exception {
