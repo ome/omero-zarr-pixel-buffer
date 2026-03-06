@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.IntStream;
+import java.util.stream.LongStream;
 import loci.formats.FormatTools;
 import ome.io.nio.DimensionsOutOfBoundsException;
 import ome.io.nio.PixelBuffer;
@@ -148,7 +149,7 @@ public class ZarrPixelBuffer implements PixelBuffer {
             int y = key.get(5);
             int w = key.get(6);
             int h = key.get(7);
-            int[] shape = new int[] { 1, 1, 1, h, w };
+            long[] shape = new long[] { 1, 1, 1, h, w };
             byte[] innerBuffer = new byte[(int) length(shape) * getByteWidth()];
             setResolutionLevel(resolutionLevel);
             return getTileDirect(z, c, t, x, y, w, h, innerBuffer);
@@ -193,13 +194,13 @@ public class ZarrPixelBuffer implements PixelBuffer {
      *      "https://numpy.org/doc/stable/reference/generated/numpy.shape.html">numpy.shape</a>
      *      documentation
      */
-    private long length(int[] shape) {
-        return IntStream.of(shape).mapToLong(a -> (long) a).reduce(1, Math::multiplyExact);
+    private long length(long[] shape) {
+        return LongStream.of(shape).reduce(1, Math::multiplyExact);
     }
 
-    private void read(byte[] buffer, int[] shape, long[] offset) throws IOException {
+    private void read(byte[] buffer, long[] shape, long[] offset) throws IOException {
         // Check planar read size (sizeX and sizeY only)
-        checkReadSize(new int[] { shape[axesOrder.get(Axis.X)], shape[axesOrder.get(Axis.Y)] });
+        checkReadSize(new long[] { shape[axesOrder.get(Axis.X)], shape[axesOrder.get(Axis.Y)] });
 
         // if reading from a resolution downsampled in Z,
         // adjust the shape/offset for the Z coordinate only
@@ -371,7 +372,7 @@ public class ZarrPixelBuffer implements PixelBuffer {
     /**
      * Checks the shape to read does not exceed the maximum plane size.
      **/
-    public void checkReadSize(int[] shape) {
+    public void checkReadSize(long[] shape) {
         long length = length(shape);
         long maxLength = maxPlaneWidth * maxPlaneHeight;
         if (length > maxLength) {
@@ -473,7 +474,7 @@ public class ZarrPixelBuffer implements PixelBuffer {
         // happens before the similar check in read(). Otherwise we will
         // potentially allocate massive inner buffers in the tile cache
         // asynchronous entry builder that will never be used.
-        checkReadSize(new int[] { w, h });
+        checkReadSize(new long[] { w, h });
 
         List<List<Integer>> keys = new ArrayList<List<Integer>>();
         List<Integer> key = null;
@@ -507,7 +508,7 @@ public class ZarrPixelBuffer implements PixelBuffer {
             // Check check bottom-right of tile in bounds
             checkBounds(x + w - 1, y + h - 1, z, c, t);
 
-            int[] shape = new int[axesOrder.size()];
+            long[] shape = new long[axesOrder.size()];
             long[] offset = new long[axesOrder.size()];
             if (axesOrder.containsKey(Axis.T)) {
                 shape[axesOrder.get(Axis.T)] = 1;
@@ -620,7 +621,7 @@ public class ZarrPixelBuffer implements PixelBuffer {
         // Check check bottom-right of tile in bounds
         checkBounds(x + w - 1, y + h - 1, z, c, t);
 
-        int[] shape = new int[axesOrder.size()];
+        long[] shape = new long[axesOrder.size()];
         long[] offset = new long[axesOrder.size()];
         if (axesOrder.containsKey(Axis.T)) {
             shape[axesOrder.get(Axis.T)] = 1;
@@ -665,7 +666,7 @@ public class ZarrPixelBuffer implements PixelBuffer {
         // Check check bottom-right of tile in bounds
         checkBounds(x + w - 1, y + h - 1, z, c, t);
 
-        int[] shape = new int[axesOrder.size()];
+        long[] shape = new long[axesOrder.size()];
         long[] offset = new long[axesOrder.size()];
         if (axesOrder.containsKey(Axis.T)) {
             shape[axesOrder.get(Axis.T)] = 1;

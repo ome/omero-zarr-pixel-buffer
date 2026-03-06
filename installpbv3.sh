@@ -8,8 +8,7 @@ OZPB=
 jacksonVersion=2.20.0
 awsSdkVersion=2.34.6
 reactiveStreamsVersion=1.0.4 # used by aws
-zarrJavaVersion=0.0.10
-
+zarrJavaVersion=0.1.0
 
 # Remove older installation
 rm -f $OMERO_DIST/lib/server/omero-zarr-pixel-buffer*.jar $OMERO_DIST/lib/server/caffeine*.jar $OMERO_DIST/lib/server/jzarr*.jar $OMERO_DIST/lib/server/s3fs*.jar $OMERO_DIST/lib/server/aws-java-*.jar
