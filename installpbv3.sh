@@ -3,7 +3,7 @@
 # OMERO server installation directory
 OMERO_DIST=/opt/omero/server/OMERO.server
 # OMERO zarr pixel buffer jar URL (optional, can be set manually)
-OZPB=
+OZPB=https://merge-ci.openmicroscopy.org/jenkins/job/OMERO-zarr-pixel-buffer-build/78/artifact/omero-zarr-pixel-buffer/build/libs/omero-zarr-pixel-buffer-0.6.2-SNAPSHOT.jar
 
 jacksonVersion=2.20.0
 awsSdkVersion=2.34.6
@@ -11,13 +11,14 @@ reactiveStreamsVersion=1.0.4 # used by aws
 zarrJavaVersion=0.1.0
 
 # Remove older installation
-rm -f $OMERO_DIST/lib/server/omero-zarr-pixel-buffer*.jar $OMERO_DIST/lib/server/caffeine*.jar $OMERO_DIST/lib/server/jzarr*.jar $OMERO_DIST/lib/server/s3fs*.jar $OMERO_DIST/lib/server/aws-java-*.jar
-
+rm -f $OMERO_DIST/lib/server/omero-zarr-pixel-buffer*.jar $OMERO_DIST/lib/server/caffeine*.jar $OMERO_DIST/lib/server/jzarr*.jar $OMERO_DIST/lib/server/s3fs*.jar $OMERO_DIST/lib/server/aws-java-*.jar $OMERO_DIST/lib/server/okhttp*.jar $OMERO_DIST/lib/server/okio*.jar
 # Install dependencies
 wget -P $OMERO_DIST/lib/server https://repo.maven.apache.org/maven2/com/github/ben-manes/caffeine/caffeine/3.1.8/caffeine-3.1.8.jar
 wget -P $OMERO_DIST/lib/server https://repo.maven.apache.org/maven2/dev/zarr/zarr-java/${zarrJavaVersion}/zarr-java-${zarrJavaVersion}.jar
 wget -P $OMERO_DIST/lib/server https://repo1.maven.org/maven2/com/scalableminds/blosc-java/0.1-1.21.4/blosc-java-0.1-1.21.4.jar
-wget -P $OMERO_DIST/lib/server https://repo1.maven.org/maven2/com/squareup/okhttp/okhttp/2.7.5/okhttp-2.7.5.jar
+wget -P $OMERO_DIST/lib/server https://repo1.maven.org/maven2/com/squareup/okhttp3/okhttp/4.12.0/okhttp-4.12.0.jar
+wget -P $OMERO_DIST/lib/server https://repo1.maven.org/maven2/com/squareup/okio/okio-jvm/3.6.0/okio-jvm-3.6.0.jar
+wget -P $OMERO_DIST/lib/server https://repo1.maven.org/maven2/org/jetbrains/kotlin/kotlin-stdlib/1.9.10/kotlin-stdlib-1.9.10.jar
 wget -P $OMERO_DIST/lib/server https://repo1.maven.org/maven2/com/fasterxml/jackson/datatype/jackson-datatype-jdk8/${jacksonVersion}/jackson-datatype-jdk8-${jacksonVersion}.jar
 
 # Additional AWS SDK v2 runtime dependencies
