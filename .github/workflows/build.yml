@@ -32,3 +32,12 @@ jobs:
         if: github.event_name != 'pull_request' && matrix.java == 11 && github.repository_owner == 'glencoesoftware'
         run: |
           ./gradlew -PArtifactoryUserName=${ArtifactoryUserName} -PArtifactoryPassword=${ArtifactoryPassword} publish
+  publish_snapshots:
+    if: ${{ github.repository_owner == 'ome' }}
+    needs: build
+    uses: ome/action-workflows/.github/workflows/gradle_publish.yml@main
+    with:
+      ARTIFACTORY_URL: "snapshots"
+    secrets:
+      ARTIFACTORY_USER: ${{ secrets.ARTIFACTORY_USER }}
+      ARTIFACTORY_PASSWORD: ${{ secrets.ARTIFACTORY_PASSWORD }}
