@@ -3,15 +3,16 @@ plugins {
     id 'eclipse'
     id 'maven-publish'
     id 'checkstyle'
+    id 'org.openmicroscopy.project' version '6.0.0'
 }
 
-group = 'com.glencoesoftware.omero'
+group = 'ome'
 version = '0.6.2-SNAPSHOT'
 
 ext {
     awsSdkVersion = '2.34.6'
     jacksonVersion = '2.20.0'
-    zarrJavaVersion = '0.1.0'
+    zarrJavaVersion = '0.1.1'
     formatsVersion = '8.3.0'
 }
 
@@ -73,33 +74,6 @@ test {
   useJUnit()
 }
 
-publishing {
-    publications {
-        omeroZarrPixelBuffer(MavenPublication) {
-            from components.java
-            pom {
-                name = 'OMERO Zarr Pixel Buffer'
-                licenses {
-                    license {
-                        name = 'GNU General Public License version 2'
-                        url = 'http://www.gnu.org/licenses/gpl-2.0.txt'
-                    }
-                }
-            }
-        }
-    }
-
-    repositories {
-        maven {
-            url = 'https://artifacts.glencoesoftware.com/artifactory/gs-omero-snapshots-local/'
-            credentials {
-               username = project.properties.ArtifactoryUserName
-               password = project.properties.ArtifactoryPassword
-            }
-        }
-    }
-}
-
 jar {
     manifest {
         attributes(
@@ -109,8 +83,6 @@ jar {
             "Built-On": new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ").format(new Date()),
             "Implementation-Build": "git rev-parse --verify HEAD".execute().getText().trim(),
             "Implementation-Title": "OMERO Zarr Pixel Buffer",
-            "Implementation-Version": archiveVersion,
-            "Implementation-Vendor": "Glencoe Software Inc.",
         )
     }
 }
