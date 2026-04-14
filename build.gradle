@@ -73,6 +73,25 @@ test {
   useJUnit()
 }
 
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            artifactId = 'omero-zarr-pixel-buffer'
+            from components.java
+        }
+    }
+    repositories {
+        maven {
+            name = 'OMESnapshots'
+            url = 'https://artifacts.openmicroscopy.org/artifactory/ome.snapshots'
+            credentials {
+                username = project.findProperty('ome.snapshots.username')
+                password = project.findProperty('ome.snapshots.password')
+            }
+        }
+    }
+}
+
 jar {
     manifest {
         attributes(

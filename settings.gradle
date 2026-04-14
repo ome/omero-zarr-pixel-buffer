@@ -1,0 +1,9 @@
+pluginManagement {
+    repositories {
+        mavenLocal()
+        mavenCentral()
+        maven { url 'https://artifacts.openmicroscopy.org/artifactory/maven/' }
+    }
+}
+
+rootProject.name = 'omero-zarr-pixel-buffer'
