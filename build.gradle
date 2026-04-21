@@ -3,7 +3,6 @@ plugins {
     id 'eclipse'
     id 'maven-publish'
     id 'checkstyle'
-    id 'org.openmicroscopy.project' version '6.0.0'
 }
 
 group = 'com.glencoesoftware.omero'
@@ -83,11 +82,12 @@ publishing {
     }
     repositories {
         maven {
-            name = 'OMESnapshots'
-            url = 'https://artifacts.openmicroscopy.org/artifactory/ome.snapshots'
+            name = 'maven-internal'
+            url = 'http://nexus:8081/nexus/repository/maven-internal/'
+            allowInsecureProtocol = true
             credentials {
-                username = project.findProperty('ome.snapshots.username')
-                password = project.findProperty('ome.snapshots.password')
+                username = 'admin'
+                password = 'admin123'
             }
         }
     }
